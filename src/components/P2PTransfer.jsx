@@ -8,7 +8,19 @@ import api from '../services/api';
 import TokenSelector from './TokenSelector';
 
 export default function P2PTransfer({ onSuccess }) {
-    const { connected, address, getBalance, updateBalance, connectWallet, refreshBalances, walletSeed } = useWallet();
+    const wallet = useWallet();
+    const {
+        connected = false,
+        address = '',
+        getBalance,
+        updateBalance,
+        connectWallet,
+    } = wallet;
+
+    // These may not exist in every wallet context — guard them
+    const refreshBalances = wallet.refreshBalances ?? null;
+    const walletSeed = wallet.walletSeed ?? null;
+
     const [token, setToken] = useState('mQantas');
     const [amount, setAmount] = useState('');
     const [recipient, setRecipient] = useState('');
@@ -17,21 +29,42 @@ export default function P2PTransfer({ onSuccess }) {
     const [loading, setLoading] = useState(false);
 
     const tokenData = getToken(token);
+
+    // Guard: if token data is missing, bail out early
+    if (!tokenData) {
+        return (
+            <div className="transfer-section">
+                <div className="transfer-card">
+                    <p style={{ color: 'red' }}>Token "{token}" not found. Please select a valid token.</p>
+                    <TokenSelector
+                        isOpen={true}
+                        onClose={() => {}}
+                        onSelect={(t) => setToken(t)}
+                        excludeToken={null}
+                    />
+                </div>
+            </div>
+        );
+    }
+
     const numAmount = parseFloat(amount) || 0;
+    const balance = typeof getBalance === 'function' ? (getBalance(token) ?? 0) : 0;
 
     const handleSend = async () => {
-        if (numAmount <= 0 || !recipient || numAmount > getBalance(token)) return;
+        if (numAmount <= 0 || !recipient.trim() || numAmount > balance) return;
         setLoading(true);
 
         let txHash = null;
 
         try {
-            const result = await api.sendTransfer(token, numAmount, recipient, walletSeed, memo);
-            if (result && result.tx_hash) {
-                txHash = result.tx_hash;
+            if (typeof api?.sendTransfer === 'function') {
+                const result = await api.sendTransfer(token, numAmount, recipient, walletSeed, memo);
+                if (result && result.tx_hash) {
+                    txHash = result.tx_hash;
+                }
             }
         } catch (e) {
-            console.warn('API transfer failed, using simulated:', e.message);
+            console.warn('API transfer failed, using simulated:', e?.message);
         }
 
         if (!txHash) {
@@ -39,21 +72,33 @@ export default function P2PTransfer({ onSuccess }) {
             txHash = generateTxHash();
         }
 
-        updateBalance(token, -numAmount);
+        if (typeof updateBalance === 'function') {
+            updateBalance(token, -numAmount);
+        }
+
         setLoading(false);
         setAmount('');
         setRecipient('');
         setMemo('');
 
-        refreshBalances();
+        if (typeof refreshBalances === 'function') {
+            try {
+                refreshBalances();
+            } catch (e) {
+                console.warn('refreshBalances failed:', e?.message);
+            }
+        }
 
-        if (onSuccess) onSuccess({
-            type: 'transfer',
-            token: tokenData,
-            amount: numAmount,
-            recipient,
-            txHash,
-        });
+        
+        if (onSuccess) {
+            onSuccess({
+                type: 'transfer',
+                token: tokenData,
+                amount: numAmount,
+                recipient,
+                txHash,
+            });
+        }
     };
 
     return (
@@ -61,7 +106,15 @@ export default function P2PTransfer({ onSuccess }) {
             <div className="transfer-card">
                 <div className="lp-header">
                     <h3>Send Tokens</h3>
-                    <span className="lp-badge" style={{ background: 'rgba(255,0,122,0.1)', color: 'var(--pink)' }}>P2P</span>
+                    <span
+                        className="lp-badge"
+                        style={{
+                            background: 'rgba(255,0,122,0.1)',
+                            color: 'var(--pink)',
+                        }}
+                    >
+                        P2P
+                    </span>
                 </div>
 
                 <input
@@ -81,15 +134,20 @@ export default function P2PTransfer({ onSuccess }) {
                             value={amount}
                             onChange={e => setAmount(e.target.value)}
                         />
-                        <button className="token-select-btn" onClick={() => setSelectorOpen(true)}>
+                        <button
+                            className="token-select-btn"
+                            onClick={() => setSelectorOpen(true)}
+                        >
                             <span className="token-emoji">{tokenData.emoji}</span>
                             {tokenData.symbol}
                             <ChevronDown size={14} className="chevron" />
                         </button>
                     </div>
                     <div className="swap-panel-footer" style={{ marginTop: 8 }}>
-                        <span>${(numAmount * tokenData.price).toFixed(2)}</span>
-                        <span>Balance: {getBalance(token).toLocaleString()}</span>
+                        <span>
+                            ${(numAmount * (tokenData.price ?? 0)).toFixed(2)}
+                        </span>
+                        <span>Balance: {balance.toLocaleString()}</span>
                     </div>
                 </div>
 
@@ -104,12 +162,29 @@ export default function P2PTransfer({ onSuccess }) {
 
                 <button
                     className="transfer-send-btn"
-                    disabled={!connected || numAmount <= 0 || !recipient || loading}
+                    disabled={
+                        !connected ||
+                        numAmount <= 0 ||
+                        !recipient.trim() ||
+                        numAmount > balance ||
+                        loading
+                    }
                     onClick={connected ? handleSend : connectWallet}
                 >
-                    {!connected ? 'Connect Wallet' : loading ? 'Sending…' : (
+                    {!connected ? (
+                        'Connect Wallet'
+                    ) : loading ? (
+                        'Sending…'
+                    ) : (
                         <>
-                            <Send size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 8 }} />
+                            <Send
+                                size={16}
+                                style={{
+                                    display: 'inline',
+                                    verticalAlign: 'middle',
+                                    marginRight: 8,
+                                }}
+                            />
                             Send {tokenData.symbol}
                         </>
                     )}
@@ -134,7 +209,10 @@ export default function P2PTransfer({ onSuccess }) {
             <TokenSelector
                 isOpen={selectorOpen}
                 onClose={() => setSelectorOpen(false)}
-                onSelect={setToken}
+                onSelect={(t) => {
+                    setToken(t);
+                    setSelectorOpen(false);
+                }}
                 excludeToken={null}
             />
         </div>
