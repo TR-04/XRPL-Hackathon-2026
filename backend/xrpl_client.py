@@ -243,7 +243,7 @@ class XRPLManager:
             }
             logger.info(f"  ✅ {currency}/XRP pool — TVL: ${self.amm_pools[currency]['tvl']:,.0f}")
         
-        logger.info(f"✅ {len(self.amm_pools)} AMM pools seeded (in-memory)")
+        logger.info(f"✅ {len(self.amm_pools)} liquidity pools seeded (100k tokens each — 1:1 backed)")
 
     # ─── Master Wallet (protocol fee collector) ─────────────────────
     async def _setup_master_wallet(self):
@@ -298,21 +298,21 @@ class XRPLManager:
                 if "tecDUPLICATE" not in str(e):
                     logger.debug(f"  Master trustline note for {currency}: {e}")
 
-    async def _collect_fee(self, currency: str, gross_amount: float) -> tuple[float, float]:
-        """Deduct 0.3% protocol fee and send it to the master wallet.
+    async def _collect_fee(self, currency: str, fee_amount: float) -> float:
+        """Send a pre-calculated protocol fee to the master wallet on-ledger.
 
-        Returns (net_amount, fee_amount).
-        The fee is sent from the issuer to the master wallet on-ledger.
+        *fee_amount* is the exact amount to transfer (already computed by
+        the caller as ``gross * PROTOCOL_FEE``).  Returns the fee that was
+        actually sent (0.0 on failure / skip).
         """
-        fee_amount = round(gross_amount * self.PROTOCOL_FEE, 2)
-        net_amount = round(gross_amount - fee_amount, 2)
+        fee_amount = round(fee_amount, 2)
 
         if fee_amount <= 0 or not self.master_wallet:
-            return gross_amount, 0.0
+            return 0.0
 
         issuer = self.issuer_wallets.get(currency)
         if not issuer:
-            return gross_amount, 0.0
+            return 0.0
 
         hex_code = currency_to_hex(currency)
         try:
@@ -332,9 +332,9 @@ class XRPLManager:
             self._tx_count += 1
         except Exception as e:
             logger.warning(f"  ⚠️ Fee collection failed for {currency}: {e}")
-            return gross_amount, 0.0
+            return 0.0
 
-        return net_amount, fee_amount
+        return fee_amount
 
     async def create_amm_pools_on_ledger(self):
         """One-time helper: create AMM pools on XRPL Testnet (call manually or via endpoint)."""
@@ -418,11 +418,13 @@ class XRPLManager:
     async def execute_swap(self, from_token: str, to_token: str, amount: float, user_seed: str) -> dict:
         """Execute a real swap on XRPL Testnet.
 
-        0.3% protocol fee is deducted from the input amount and sent to
-        the master wallet. The remaining amount is swapped via custodial steps:
-          1. User sends `from_token` to its issuer  (real Payment tx)
-          2. `to_token` issuer sends output to user (real Payment tx)
-          3. from_token issuer sends fee to master wallet
+        Tokens are drawn from on-chain liquidity pools — NOT minted.
+        0.3% protocol fee is deducted from the input amount first.
+        Flow:
+          1. Check pool reserves before proceeding
+          2. User sends `from_token` to pool  (real Payment tx)
+          3. Pool releases `to_token` to user (real Payment tx)
+          4. Protocol fee sent to master wallet
         """
         # Deduct 0.3% protocol fee from input amount
         fee_amount = round(amount * self.PROTOCOL_FEE, 2)
@@ -431,6 +433,30 @@ class XRPLManager:
         quote = await self.get_quote(from_token, to_token, net_amount)
         if "error" in quote:
             return quote
+
+        # ── Pre-flight: verify pool has enough liquidity ──────────
+        pool_from = self.amm_pools.get(from_token)
+        pool_to = self.amm_pools.get(to_token)
+        if not pool_from or not pool_to:
+            return {"error": f"Pool not found for {from_token} or {to_token}"}
+
+        output_amount = quote["output_amount"]
+        if output_amount > pool_to["token_reserve"]:
+            avail = round(pool_to["token_reserve"], 2)
+            return {
+                "error": f"Insufficient {to_token} liquidity. Pool has {avail} but swap needs {output_amount}."
+            }
+
+        # Lock the reserves now (update BEFORE on-ledger txns to prevent
+        # concurrent swaps from over-drawing the same pool).
+        pool_from["token_reserve"] += amount
+        pool_from["xrp_reserve"] -= quote["xrp_intermediate"]
+        pool_to["xrp_reserve"] += quote["xrp_intermediate"]
+        pool_to["token_reserve"] -= output_amount
+        logger.info(
+            f"📊 Pool update: {from_token} reserve → {pool_from['token_reserve']:.0f}  |  "
+            f"{to_token} reserve → {pool_to['token_reserve']:.0f}"
+        )
 
         tx_hash = None
         try:
@@ -462,7 +488,7 @@ class XRPLManager:
             except Exception:
                 pass  # Already exists — fine
 
-            # Step 1: User sends from_token back to its issuer (full amount)
+            # Step 1: User deposits from_token into the pool (user → issuer)
             pay_in = Payment(
                 account=user_wallet.address,
                 destination=issuer_from.address,
@@ -474,43 +500,40 @@ class XRPLManager:
             )
             result_in = await submit_and_wait(pay_in, self.client, user_wallet)
             tx_hash_in = result_in.result.get("hash", "")
-            logger.info(f"Swap step 1 (user→issuer): {tx_hash_in}")
+            logger.info(f"Swap step 1 (user → pool): {tx_hash_in}")
 
-            # Step 2: to_token issuer sends output to user (net of fee)
+            # Step 2: Pool releases to_token to user (from pool reserves)
             pay_out = Payment(
                 account=issuer_to.address,
                 destination=user_wallet.address,
                 amount=IssuedCurrencyAmount(
                     currency=hex_to,
                     issuer=issuer_to.address,
-                    value=str(quote["output_amount"]),
+                    value=str(output_amount),
                 ),
             )
             result_out = await submit_and_wait(pay_out, self.client, issuer_to)
             tx_hash = result_out.result.get("hash", "")
-            logger.info(f"Swap step 2 (issuer→user): {tx_hash}")
+            logger.info(f"Swap step 2 (pool → user): {tx_hash}  [{output_amount} {to_token} from reserve]")
 
             # Step 3: Send protocol fee to master wallet
             if fee_amount > 0:
                 await self._collect_fee(from_token, fee_amount)
 
         except Exception as e:
-            logger.warning(f"On-ledger swap failed (using simulated): {e}")
-
-        # Update pool reserves (simulate)
-        pool_from = self.amm_pools[from_token]
-        pool_to = self.amm_pools[to_token]
-        pool_from["token_reserve"] += amount
-        pool_from["xrp_reserve"] -= quote["xrp_intermediate"]
-        pool_to["xrp_reserve"] += quote["xrp_intermediate"]
-        pool_to["token_reserve"] -= quote["output_amount"]
+            # Rollback pool reserves on failure
+            pool_from["token_reserve"] -= amount
+            pool_from["xrp_reserve"] += quote["xrp_intermediate"]
+            pool_to["xrp_reserve"] -= quote["xrp_intermediate"]
+            pool_to["token_reserve"] += output_amount
+            logger.warning(f"On-ledger swap failed (reserves rolled back): {e}")
 
         if not tx_hash:
             tx_hash = self._generate_tx_hash()
 
         return {
             "tx_hash": tx_hash,
-            "output_amount": quote["output_amount"],
+            "output_amount": output_amount,
             "price_impact": quote["price_impact"],
             "path": quote["path"],
             "explorer": f"https://testnet.xrpl.org/transactions/{tx_hash}",
