@@ -1,0 +1,8 @@
+node_modules
+dist
+backend/venv
+backend/__pycache__
+backend/.issuer_wallets.json
+.git
+.DS_Store
+*.log

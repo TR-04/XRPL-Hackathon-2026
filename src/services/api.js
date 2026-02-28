@@ -3,7 +3,9 @@
  * Connects React frontend to FastAPI backend at localhost:8000
  */
 
-const API_BASE = 'http://localhost:8000';
+// In Docker, the browser still talks to localhost — the backend port is exposed.
+// Override via VITE_API_URL env var if needed.
+const API_BASE = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) || 'http://localhost:8000';
 
 class ApiService {
     constructor() {

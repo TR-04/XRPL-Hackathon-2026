@@ -9,7 +9,8 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - VITE_API_URL=http://backend:8000
+      # Browser calls localhost:8000 directly (port is exposed below)
+      - VITE_API_URL=http://localhost:8000
     depends_on:
       - backend
     networks:
@@ -25,8 +26,14 @@ services:
       - XRPL_NODE_URL=https://s.altnet.rippletest.net:51234/
       - JWT_SECRET=loyaltyswap_hackathon_2026_secret_key
       - CORS_ORIGINS=http://localhost:3000,http://frontend:3000
+    volumes:
+      # Persist issuer wallets so they survive container restarts
+      - wallet-cache:/app
     networks:
       - loyaltyswap
+
+volumes:
+  wallet-cache:
 
 networks:
   loyaltyswap:
