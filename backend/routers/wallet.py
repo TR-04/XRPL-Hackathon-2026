@@ -13,5 +13,5 @@ router = APIRouter()
 async def get_balances(address: str, request: Request):
     """Get all token + XRP balances for an XRPL address."""
     issuer_addresses = request.app.state.issuer_addresses
-    balances = get_all_balances(address, issuer_addresses)
+    balances = await get_all_balances(address, issuer_addresses)
     return balances

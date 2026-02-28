@@ -1,11 +1,11 @@
 """
 XRPL service layer — all direct XRPL ledger interactions.
-Uses xrpl-py following the official tutorials exactly.
+Uses xrpl-py AsyncJsonRpcClient for FastAPI compatibility.
 """
 import logging
 from typing import Any
 
-from xrpl.clients import JsonRpcClient
+from xrpl.asyncio.clients import AsyncJsonRpcClient
 from xrpl.models import (
     AccountInfo,
     AccountLines,
@@ -14,7 +14,7 @@ from xrpl.models import (
     Payment,
     TrustSet,
 )
-from xrpl.transaction import submit_and_wait
+from xrpl.asyncio.transaction import submit_and_wait
 from xrpl.utils import xrp_to_drops
 from xrpl.wallet import Wallet
 
@@ -22,26 +22,27 @@ from config import TOKENS, XRPL_TESTNET_URL, XRPL_EXPLORER_BASE
 
 logger = logging.getLogger(__name__)
 
-# ─── Singleton client ────────────────────────────────────────────────────────
+# ─── Singleton async client ─────────────────────────────────────────────────
 
-_client: JsonRpcClient | None = None
+_client: AsyncJsonRpcClient | None = None
 
 
-def get_client() -> JsonRpcClient:
-    """Return the XRPL JSON-RPC client (singleton)."""
+def get_client() -> AsyncJsonRpcClient:
+    """Return the async XRPL JSON-RPC client (singleton)."""
     global _client
     if _client is None:
-        _client = JsonRpcClient(XRPL_TESTNET_URL)
+        _client = AsyncJsonRpcClient(XRPL_TESTNET_URL)
     return _client
 
 
-def is_connected() -> bool:
+async def is_connected() -> bool:
     """Quick check that the XRPL client can reach the network."""
     try:
         client = get_client()
-        resp = client.request(AccountInfo(account="rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"))
+        resp = await client.request(AccountInfo(account="rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"))
         return resp.is_successful()
-    except Exception:
+    except Exception as e:
+        logger.warning(f"XRPL connectivity check failed: {e}")
         return False
 
 
@@ -76,11 +77,11 @@ def wallet_from_seed(seed: str) -> Wallet:
 
 # ─── Balance queries ─────────────────────────────────────────────────────────
 
-def get_xrp_balance(address: str) -> str:
+async def get_xrp_balance(address: str) -> str:
     """Get XRP balance for an address."""
     client = get_client()
     try:
-        resp = client.request(AccountInfo(account=address))
+        resp = await client.request(AccountInfo(account=address))
         if resp.is_successful():
             drops = int(resp.result["account_data"]["Balance"])
             return str(drops / 1_000_000)
@@ -89,7 +90,7 @@ def get_xrp_balance(address: str) -> str:
     return "0"
 
 
-def get_token_balances(address: str, issuer_addresses: dict[str, str]) -> dict[str, str]:
+async def get_token_balances(address: str, issuer_addresses: dict[str, str]) -> dict[str, str]:
     """
     Get all issued-token balances for an address.
     issuer_addresses: {token_id: issuer_classic_address}
@@ -107,7 +108,7 @@ def get_token_balances(address: str, issuer_addresses: dict[str, str]) -> dict[s
             kwargs: dict[str, Any] = {"account": address}
             if marker:
                 kwargs["marker"] = marker
-            resp = client.request(AccountLines(**kwargs))
+            resp = await client.request(AccountLines(**kwargs))
             if not resp.is_successful():
                 break
             for line in resp.result.get("lines", []):
@@ -126,23 +127,23 @@ def get_token_balances(address: str, issuer_addresses: dict[str, str]) -> dict[s
     return balances
 
 
-def get_all_balances(address: str, issuer_addresses: dict[str, str]) -> dict[str, str]:
+async def get_all_balances(address: str, issuer_addresses: dict[str, str]) -> dict[str, str]:
     """Get XRP + all token balances."""
-    result = get_token_balances(address, issuer_addresses)
-    result["xrp"] = get_xrp_balance(address)
+    result = await get_token_balances(address, issuer_addresses)
+    result["xrp"] = await get_xrp_balance(address)
     return result
 
 
 # ─── TrustSet ─────────────────────────────────────────────────────────────
 
-def set_trustline(user_wallet: Wallet, token_id: str, issuer_address: str, limit: str = "1000000000") -> dict:
+async def set_trustline(user_wallet: Wallet, token_id: str, issuer_address: str, limit: str = "1000000000") -> dict:
     """Establish a trustline from user to issuer for a given token."""
     client = get_client()
     tx = TrustSet(
         account=user_wallet.address,
         limit_amount=issued_amount(token_id, limit, issuer_address),
     )
-    resp = submit_and_wait(tx, client, user_wallet)
+    resp = await submit_and_wait(tx, client, user_wallet)
     return {
         "tx_hash": resp.result.get("hash", ""),
         "success": resp.is_successful(),
@@ -151,7 +152,7 @@ def set_trustline(user_wallet: Wallet, token_id: str, issuer_address: str, limit
 
 # ─── Mint (issuer → user Payment) ────────────────────────────────────────────
 
-def mint_token(issuer_wallet: Wallet, user_address: str, token_id: str, amount: float) -> dict:
+async def mint_token(issuer_wallet: Wallet, user_address: str, token_id: str, amount: float) -> dict:
     """
     Mint tokens by sending a Payment from the issuer wallet to the user.
     The issuer is the currency creator, so this creates new supply.
@@ -162,7 +163,7 @@ def mint_token(issuer_wallet: Wallet, user_address: str, token_id: str, amount: 
         destination=user_address,
         amount=issued_amount(token_id, amount, issuer_wallet.address),
     )
-    resp = submit_and_wait(tx, client, issuer_wallet)
+    resp = await submit_and_wait(tx, client, issuer_wallet)
     tx_hash = resp.result.get("hash", "")
     return {
         "tx_hash": tx_hash,
@@ -175,7 +176,7 @@ def mint_token(issuer_wallet: Wallet, user_address: str, token_id: str, amount: 
 
 # ─── Swap (cross-currency Payment with pathfinding) ──────────────────────────
 
-def execute_swap(
+async def execute_swap(
     user_wallet: Wallet,
     from_token: str,
     to_token: str,
@@ -202,7 +203,7 @@ def execute_swap(
         flags=131072,  # tfPartialPayment
     )
 
-    resp = submit_and_wait(tx, client, user_wallet)
+    resp = await submit_and_wait(tx, client, user_wallet)
     tx_hash = resp.result.get("hash", "")
 
     # Parse delivered amount from metadata
@@ -228,7 +229,7 @@ def execute_swap(
 
 # ─── P2P Transfer ────────────────────────────────────────────────────────────
 
-def send_p2p(
+async def send_p2p(
     sender_wallet: Wallet,
     to_address: str,
     token_id: str,
@@ -242,7 +243,7 @@ def send_p2p(
         destination=to_address,
         amount=issued_amount(token_id, amount, issuer_address),
     )
-    resp = submit_and_wait(tx, client, sender_wallet)
+    resp = await submit_and_wait(tx, client, sender_wallet)
     tx_hash = resp.result.get("hash", "")
     return {
         "tx_hash": tx_hash,
@@ -253,7 +254,7 @@ def send_p2p(
 
 # ─── Quote (estimate swap output from AMM reserves) ──────────────────────────
 
-def get_quote(
+async def get_quote(
     from_token: str,
     to_token: str,
     amount: float,
@@ -273,8 +274,8 @@ def get_quote(
         return {"error": f"Unknown token pair: {from_token}/{to_token}"}
 
     # Get AMM info for from_token/XRP pool
-    from_pool = _get_amm_reserves(client, from_token, from_issuer)
-    to_pool = _get_amm_reserves(client, to_token, to_issuer)
+    from_pool = await _get_amm_reserves(client, from_token, from_issuer)
+    to_pool = await _get_amm_reserves(client, to_token, to_issuer)
 
     if not from_pool or not to_pool:
         # Fallback: use config prices for estimate
@@ -318,10 +319,10 @@ def get_quote(
     }
 
 
-def _get_amm_reserves(client: JsonRpcClient, token_id: str, issuer: str) -> dict | None:
+async def _get_amm_reserves(client: AsyncJsonRpcClient, token_id: str, issuer: str) -> dict | None:
     """Query AMM reserves for a token/XRP pool."""
     try:
-        resp = client.request(AMMInfo(
+        resp = await client.request(AMMInfo(
             asset={"currency": currency_hex(token_id), "issuer": issuer},
             asset2={"currency": "XRP"},
         ))

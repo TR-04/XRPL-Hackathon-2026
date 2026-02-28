@@ -28,7 +28,7 @@ async def lifespan(app: FastAPI):
 
     # Initialise XRPL client
     client = get_client()
-    connected = is_connected()
+    connected = await is_connected()
     logger.info(f"XRPL testnet connected: {connected}")
 
     # Load issuer wallets from .env seeds

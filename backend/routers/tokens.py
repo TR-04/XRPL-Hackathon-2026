@@ -34,7 +34,7 @@ async def mint(token_id: str, body: MintRequest, request: Request):
     issuer_w = issuer_wallets[token_id]
 
     try:
-        result = mint_token(issuer_w, body.user_address, token_id, body.amount)
+        result = await mint_token(issuer_w, body.user_address, token_id, body.amount)
     except Exception as e:
         logger.error(f"Mint failed for {token_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Mint transaction failed: {str(e)}")

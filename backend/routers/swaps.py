@@ -34,7 +34,7 @@ async def swap_quote(
     if amount <= 0:
         raise HTTPException(status_code=400, detail="Amount must be positive")
 
-    result = get_quote(from_token, to_token, amount, issuer_addresses)
+    result = await get_quote(from_token, to_token, amount, issuer_addresses)
 
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
@@ -69,7 +69,7 @@ async def swap_execute(body: SwapRequest, request: Request):
         raise HTTPException(status_code=400, detail="Invalid wallet seed")
 
     try:
-        result = execute_swap(user_wallet, body.from_token, body.to_token, body.amount, issuer_addresses)
+        result = await execute_swap(user_wallet, body.from_token, body.to_token, body.amount, issuer_addresses)
     except Exception as e:
         logger.error(f"Swap failed: {e}")
         raise HTTPException(status_code=500, detail=f"Swap transaction failed: {str(e)}")

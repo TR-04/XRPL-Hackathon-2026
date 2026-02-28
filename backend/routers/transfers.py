@@ -41,7 +41,7 @@ async def send_transfer(body: TransferRequest, request: Request):
     issuer_addr = issuer_addresses[body.token]
 
     try:
-        result = send_p2p(sender_wallet, body.to_address, body.token, body.amount, issuer_addr)
+        result = await send_p2p(sender_wallet, body.to_address, body.token, body.amount, issuer_addr)
     except Exception as e:
         logger.error(f"Transfer failed: {e}")
         raise HTTPException(status_code=500, detail=f"Transfer transaction failed: {str(e)}")

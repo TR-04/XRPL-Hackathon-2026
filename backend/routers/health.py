@@ -8,7 +8,7 @@ router = APIRouter()
 
 @router.get("/health")
 async def health_check():
-    connected = is_connected()
+    connected = await is_connected()
     return {
         "status": "healthy" if connected else "degraded",
         "xrpl_connected": connected,
