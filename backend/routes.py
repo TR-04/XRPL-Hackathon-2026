@@ -223,3 +223,14 @@ async def create_amm_pools(request: Request):
     xrpl = request.app.state.xrpl
     results = await xrpl.create_amm_pools_on_ledger()
     return {"results": results}
+
+
+# ──────────────────────────────────────────────
+# Protocol Revenue / Master Wallet
+# ──────────────────────────────────────────────
+
+@router.get("/api/v1/protocol/revenue")
+async def protocol_revenue(request: Request):
+    """Get master wallet address, balances, and protocol revenue stats."""
+    xrpl = request.app.state.xrpl
+    return await xrpl.get_master_balances()

@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { ArrowDown, Settings, ChevronDown, Loader2, ArrowRight } from 'lucide-react';
+import { ArrowDown, ChevronDown, Loader2, ArrowRight } from 'lucide-react';
 import { getToken } from '../data/tokens';
 import { getQuote as getLocalQuote, generateTxHash } from '../data/pools';
 import { useWallet } from '../context/WalletContext';
@@ -136,9 +136,6 @@ export default function SwapWidget({ onSuccess }) {
             <div className="swap-widget">
                 <div className="swap-header">
                     <h3>Swap</h3>
-                    <button className="swap-settings-btn" title="Settings">
-                        <Settings size={16} />
-                    </button>
                 </div>
 
                 {/* From Panel */}

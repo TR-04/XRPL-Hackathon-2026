@@ -124,6 +124,11 @@ class ApiService {
     async getTokens() {
         return this._fetch('/api/v1/tokens');
     }
+
+    // ── Protocol Revenue / Master Wallet ────
+    async getProtocolRevenue() {
+        return this._fetch('/api/v1/protocol/revenue');
+    }
 }
 
 // Singleton export

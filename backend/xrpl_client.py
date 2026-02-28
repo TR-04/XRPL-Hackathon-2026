@@ -98,6 +98,8 @@ _WALLETS_FILE = Path(__file__).parent / ".issuer_wallets.json"
 class XRPLManager:
     """Manages XRPL Testnet connections, wallets, and transactions."""
 
+    PROTOCOL_FEE = 0.003  # 0.3% protocol fee on every transaction
+
     def __init__(self):
         self.node_url = os.getenv("XRPL_NODE_URL", "https://s.altnet.rippletest.net:51234/")
         self.client: Optional[AsyncJsonRpcClient] = None
@@ -105,6 +107,8 @@ class XRPLManager:
         
         # Issuer wallets (one per brand)
         self.issuer_wallets: Dict[str, Wallet] = {}
+        # Master wallet — collects protocol fees
+        self.master_wallet: Optional[Wallet] = None
         # AMM pool info
         self.amm_pools: Dict[str, dict] = {}
         # User wallets cache
@@ -112,6 +116,9 @@ class XRPLManager:
         # Cached balances
         self._balance_cache: Dict[str, dict] = {}
         self._cache_ttl = 5  # seconds
+        # Revenue tracking (in-memory)
+        self._revenue: Dict[str, float] = {}
+        self._tx_count = 0
 
     async def initialize(self):
         """Connect to XRPL Testnet and set up issuer infrastructure."""
@@ -127,20 +134,23 @@ class XRPLManager:
             logger.warning(f"⚠️ XRPL connection test issue (non-fatal): {e}")
             self.connected = True  # Still mark as connected for demo
         
-        # Create issuer wallets and seed pools
+        # Create issuer wallets, master wallet, and seed pools
         await self._setup_issuers()
+        await self._setup_master_wallet()
         await self._seed_amm_pools()
 
     def _save_wallets(self):
-        """Persist issuer wallet seeds to disk so we can skip faucet calls on restart."""
+        """Persist issuer wallet seeds and master wallet to disk."""
         data = {}
         for currency, wallet in self.issuer_wallets.items():
             data[currency] = {"seed": wallet.seed, "address": wallet.address}
+        if self.master_wallet:
+            data["__MASTER__"] = {"seed": self.master_wallet.seed, "address": self.master_wallet.address}
         _WALLETS_FILE.write_text(json.dumps(data, indent=2))
-        logger.info(f"💾 Saved {len(data)} issuer wallets to {_WALLETS_FILE.name}")
+        logger.info(f"💾 Saved {len(data)} wallets to {_WALLETS_FILE.name}")
 
     def _load_wallets(self) -> bool:
-        """Load issuer wallets from disk. Returns True if all 7 were restored."""
+        """Load issuer wallets and master wallet from disk. Returns True if all 7 issuers were restored."""
         if not _WALLETS_FILE.exists():
             return False
         try:
@@ -151,6 +161,11 @@ class XRPLManager:
                 if not entry or not entry.get("seed"):
                     return False
                 self.issuer_wallets[currency] = Wallet.from_seed(entry["seed"])
+            # Restore master wallet if present
+            master_entry = data.get("__MASTER__")
+            if master_entry and master_entry.get("seed"):
+                self.master_wallet = Wallet.from_seed(master_entry["seed"])
+                logger.info(f"♻️  Restored master wallet: {self.master_wallet.address}")
             logger.info(f"♻️  Restored {len(self.issuer_wallets)} issuer wallets from cache")
             return True
         except Exception as e:
@@ -229,6 +244,97 @@ class XRPLManager:
             logger.info(f"  ✅ {currency}/XRP pool — TVL: ${self.amm_pools[currency]['tvl']:,.0f}")
         
         logger.info(f"✅ {len(self.amm_pools)} AMM pools seeded (in-memory)")
+
+    # ─── Master Wallet (protocol fee collector) ─────────────────────
+    async def _setup_master_wallet(self):
+        """Create or restore the master wallet that collects 0.3% protocol fees."""
+        if self.master_wallet:
+            # Already restored from cache — verify it's still on-ledger
+            try:
+                await self.client.request(AccountInfo(account=self.master_wallet.address))
+                logger.info(f"✅ Master wallet verified: {self.master_wallet.address}")
+            except Exception:
+                logger.warning("⚠️ Cached master wallet expired, recreating...")
+                self.master_wallet = None
+
+        if not self.master_wallet:
+            logger.info("Creating master wallet (protocol fee collector)...")
+            try:
+                self.master_wallet = await async_generate_faucet_wallet(
+                    client=self.client, debug=False,
+                )
+                logger.info(f"  ✅ Master wallet: {self.master_wallet.address}")
+            except Exception as e:
+                logger.warning(f"  ⚠️ Master wallet creation failed: {e}")
+                self.master_wallet = Wallet.create()
+
+        # Ensure master wallet has trustlines for ALL brand tokens
+        await self._ensure_master_trustlines()
+        # Re-save so master wallet is persisted
+        self._save_wallets()
+
+    async def _ensure_master_trustlines(self):
+        """Set up trustlines on the master wallet for every brand token."""
+        if not self.master_wallet:
+            return
+        for token in BRAND_TOKENS:
+            currency = token["currency"]
+            issuer = self.issuer_wallets.get(currency)
+            if not issuer:
+                continue
+            hex_code = currency_to_hex(currency)
+            try:
+                ts = TrustSet(
+                    account=self.master_wallet.address,
+                    limit_amount=IssuedCurrencyAmount(
+                        currency=hex_code,
+                        issuer=issuer.address,
+                        value="1000000000",
+                    ),
+                )
+                await submit_and_wait(ts, self.client, self.master_wallet)
+                logger.info(f"  🔗 Master trustline → {currency}")
+            except Exception as e:
+                if "tecDUPLICATE" not in str(e):
+                    logger.debug(f"  Master trustline note for {currency}: {e}")
+
+    async def _collect_fee(self, currency: str, gross_amount: float) -> tuple[float, float]:
+        """Deduct 0.3% protocol fee and send it to the master wallet.
+
+        Returns (net_amount, fee_amount).
+        The fee is sent from the issuer to the master wallet on-ledger.
+        """
+        fee_amount = round(gross_amount * self.PROTOCOL_FEE, 2)
+        net_amount = round(gross_amount - fee_amount, 2)
+
+        if fee_amount <= 0 or not self.master_wallet:
+            return gross_amount, 0.0
+
+        issuer = self.issuer_wallets.get(currency)
+        if not issuer:
+            return gross_amount, 0.0
+
+        hex_code = currency_to_hex(currency)
+        try:
+            pay_fee = Payment(
+                account=issuer.address,
+                destination=self.master_wallet.address,
+                amount=IssuedCurrencyAmount(
+                    currency=hex_code,
+                    issuer=issuer.address,
+                    value=str(fee_amount),
+                ),
+            )
+            await submit_and_wait(pay_fee, self.client, issuer)
+            logger.info(f"  💰 Fee collected: {fee_amount} {currency} → master wallet")
+            # Track revenue
+            self._revenue[currency] = self._revenue.get(currency, 0) + fee_amount
+            self._tx_count += 1
+        except Exception as e:
+            logger.warning(f"  ⚠️ Fee collection failed for {currency}: {e}")
+            return gross_amount, 0.0
+
+        return net_amount, fee_amount
 
     async def create_amm_pools_on_ledger(self):
         """One-time helper: create AMM pools on XRPL Testnet (call manually or via endpoint)."""
@@ -312,12 +418,17 @@ class XRPLManager:
     async def execute_swap(self, from_token: str, to_token: str, amount: float, user_seed: str) -> dict:
         """Execute a real swap on XRPL Testnet.
 
-        Since we don't have on-ledger AMM pools, we do a 2-step custodial swap:
+        0.3% protocol fee is deducted from the input amount and sent to
+        the master wallet. The remaining amount is swapped via custodial steps:
           1. User sends `from_token` to its issuer  (real Payment tx)
           2. `to_token` issuer sends output to user (real Payment tx)
-        Both are real on-ledger transactions visible on the explorer.
+          3. from_token issuer sends fee to master wallet
         """
-        quote = await self.get_quote(from_token, to_token, amount)
+        # Deduct 0.3% protocol fee from input amount
+        fee_amount = round(amount * self.PROTOCOL_FEE, 2)
+        net_amount = round(amount - fee_amount, 2)
+
+        quote = await self.get_quote(from_token, to_token, net_amount)
         if "error" in quote:
             return quote
 
@@ -351,7 +462,7 @@ class XRPLManager:
             except Exception:
                 pass  # Already exists — fine
 
-            # Step 1: User sends from_token back to its issuer
+            # Step 1: User sends from_token back to its issuer (full amount)
             pay_in = Payment(
                 account=user_wallet.address,
                 destination=issuer_from.address,
@@ -365,7 +476,7 @@ class XRPLManager:
             tx_hash_in = result_in.result.get("hash", "")
             logger.info(f"Swap step 1 (user→issuer): {tx_hash_in}")
 
-            # Step 2: to_token issuer sends output to user
+            # Step 2: to_token issuer sends output to user (net of fee)
             pay_out = Payment(
                 account=issuer_to.address,
                 destination=user_wallet.address,
@@ -378,6 +489,10 @@ class XRPLManager:
             result_out = await submit_and_wait(pay_out, self.client, issuer_to)
             tx_hash = result_out.result.get("hash", "")
             logger.info(f"Swap step 2 (issuer→user): {tx_hash}")
+
+            # Step 3: Send protocol fee to master wallet
+            if fee_amount > 0:
+                await self._collect_fee(from_token, fee_amount)
 
         except Exception as e:
             logger.warning(f"On-ledger swap failed (using simulated): {e}")
@@ -399,17 +514,24 @@ class XRPLManager:
             "price_impact": quote["price_impact"],
             "path": quote["path"],
             "explorer": f"https://testnet.xrpl.org/transactions/{tx_hash}",
+            "protocol_fee": fee_amount,
+            "fee_token": from_token,
         }
 
     async def mint_tokens(self, currency: str, user_address: str, amount: float, qr_data: str = "", user_seed: str = "") -> dict:
         """Mint (transfer) tokens from issuer wallet to user.
         
+        0.3% protocol fee is deducted. Net amount goes to user, fee goes to master wallet.
         If user_seed is provided and the user has no trustline for this token,
         one is created automatically before minting.
         """
         issuer = self.issuer_wallets.get(currency)
         if not issuer:
             return {"error": f"Unknown token: {currency}"}
+
+        # Calculate protocol fee
+        fee_amount = round(amount * self.PROTOCOL_FEE, 2)
+        net_amount = round(amount - fee_amount, 2)
 
         hex_code = currency_to_hex(currency)
         tx_hash = None
@@ -434,18 +556,23 @@ class XRPLManager:
                     logger.debug(f"  Trustline note for {currency}: {e}")
 
         try:
+            # Send net amount to user
             payment = Payment(
                 account=issuer.address,
                 destination=user_address,
                 amount=IssuedCurrencyAmount(
                     currency=hex_code,
                     issuer=issuer.address,
-                    value=str(int(amount)),
+                    value=str(int(net_amount)),
                 ),
             )
             result = await submit_and_wait(payment, self.client, issuer)
             tx_hash = result.result.get("hash", "")
-            logger.info(f"Minted {amount} {currency} to {user_address}: {tx_hash}")
+            logger.info(f"Minted {net_amount} {currency} to {user_address}: {tx_hash}")
+
+            # Send fee to master wallet
+            if fee_amount > 0:
+                await self._collect_fee(currency, fee_amount)
         except Exception as e:
             logger.warning(f"On-ledger mint failed (using simulated): {e}")
             tx_hash = self._generate_tx_hash()
@@ -453,7 +580,8 @@ class XRPLManager:
         return {
             "tx_hash": tx_hash,
             "token": currency,
-            "amount": amount,
+            "amount": net_amount,
+            "protocol_fee": fee_amount,
             "explorer": f"https://testnet.xrpl.org/transactions/{tx_hash}",
         }
 
@@ -471,15 +599,17 @@ class XRPLManager:
     async def send_transfer(self, token: str, amount: float, to_address: str, from_seed: str, memo: str = "") -> dict:
         """Execute a P2P token transfer using a 2-step custodial approach.
 
-        Step 1: Sender sends tokens to the issuer (always works).
-        Step 2: Issuer sends tokens to the recipient.
-                If the recipient has no trustline, one is created first
-                (requires recipient_seed — passed for demo wallets).
-        Both steps are real on-ledger Payment transactions.
+        0.3% protocol fee is deducted. Net amount goes to recipient, fee to master wallet.
+        Step 1: Sender sends full amount to the issuer.
+        Step 2: Issuer sends net amount to the recipient + fee to master wallet.
         """
         issuer = self.issuer_wallets.get(token)
         if not issuer:
             return {"error": f"Unknown token: {token}"}
+
+        # Calculate protocol fee
+        fee_amount = round(amount * self.PROTOCOL_FEE, 2)
+        net_amount = round(amount - fee_amount, 2)
 
         tx_hash = None
         try:
@@ -530,19 +660,23 @@ class XRPLManager:
                     except Exception as e:
                         logger.warning(f"  Trustline creation for recipient failed: {e}")
 
-            # ── Step 2: Issuer → Recipient (issue tokens) ────────────
+            # ── Step 2: Issuer → Recipient (issue net tokens) ────────────
             pay_out = Payment(
                 account=issuer.address,
                 destination=to_address,
                 amount=IssuedCurrencyAmount(
                     currency=hex_code,
                     issuer=issuer.address,
-                    value=str(int(amount)),
+                    value=str(int(net_amount)),
                 ),
             )
             result_out = await submit_and_wait(pay_out, self.client, issuer)
             tx_hash = result_out.result.get("hash", "")
             logger.info(f"P2P step 2 (issuer→recipient): {tx_hash}")
+
+            # ── Step 3: Send protocol fee to master wallet ───────────
+            if fee_amount > 0:
+                await self._collect_fee(token, fee_amount)
 
         except Exception as e:
             logger.warning(f"On-ledger P2P transfer failed: {e}")
@@ -554,7 +688,8 @@ class XRPLManager:
         return {
             "tx_hash": tx_hash,
             "token": token,
-            "amount": amount,
+            "amount": net_amount,
+            "protocol_fee": fee_amount,
             "to_address": to_address,
             "explorer": f"https://testnet.xrpl.org/transactions/{tx_hash}",
         }
@@ -708,6 +843,21 @@ class XRPLManager:
                 "issuer": issuer.address if issuer else "",
             })
         return tokens
+
+    async def get_master_balances(self) -> dict:
+        """Get the master wallet address and all token balances (protocol revenue)."""
+        if not self.master_wallet:
+            return {"error": "Master wallet not initialised"}
+
+        balances = await self.get_balances(self.master_wallet.address)
+        return {
+            "address": self.master_wallet.address,
+            "balances": balances,
+            "revenue_tracked": self._revenue,
+            "total_tx": self._tx_count,
+            "fee_rate": f"{self.PROTOCOL_FEE * 100}%",
+            "explorer": f"https://testnet.xrpl.org/accounts/{self.master_wallet.address}",
+        }
 
     @staticmethod
     def _generate_tx_hash() -> str:

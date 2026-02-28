@@ -1,7 +1,7 @@
 import { Wallet, ChevronDown, Loader2 } from 'lucide-react';
 import { useWallet } from '../context/WalletContext';
 
-const TABS = ['Swap', 'Liquidity', 'Transfer', 'On-Ramp'];
+const TABS = ['Swap', 'Transfer', 'On-Ramp', 'Master'];
 
 export default function Navbar({ activeTab, onTabChange }) {
     const { connected, connecting, connectStatus, address, xrpBalance, backendOnline, connectWallet, disconnectWallet } = useWallet();

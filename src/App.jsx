@@ -1,13 +1,12 @@
 import { useState, useCallback } from 'react';
-import { ArrowLeftRight, Droplets, Send, QrCode, Heart } from 'lucide-react';
+import { ArrowLeftRight, Send, QrCode, Shield } from 'lucide-react';
 import Navbar from './components/Navbar';
 import SwapWidget from './components/SwapWidget';
 import BrandGrid from './components/BrandGrid';
-import LiquidityPanel from './components/LiquidityPanel';
 import P2PTransfer from './components/P2PTransfer';
 import OnRamp from './components/OnRamp';
+import MasterWallet from './components/MasterWallet';
 import SuccessOverlay from './components/SuccessOverlay';
-import RevenueWidget from './components/RevenueWidget';
 
 export default function App() {
     const [activeTab, setActiveTab] = useState('Swap');
@@ -33,9 +32,9 @@ export default function App() {
                     <div className="hero-title">Swap Loyalty Anywhere</div>
                     <h1 className="hero-subtitle">
                         {activeTab === 'Swap' && 'Swap loyalty points instantly'}
-                        {activeTab === 'Liquidity' && 'Provide liquidity, earn yield'}
                         {activeTab === 'Transfer' && 'Send points to anyone'}
                         {activeTab === 'On-Ramp' && 'Deposit your loyalty points'}
+                        {activeTab === 'Master' && 'Protocol revenue dashboard'}
                     </h1>
                 </div>
 
@@ -44,12 +43,7 @@ export default function App() {
                     <>
                         <SwapWidget onSuccess={handleSuccess} />
                         <BrandGrid onSelectToken={handleSelectToken} />
-                        <RevenueWidget />
                     </>
-                )}
-
-                {activeTab === 'Liquidity' && (
-                    <LiquidityPanel onSuccess={handleSuccess} />
                 )}
 
                 {activeTab === 'Transfer' && (
@@ -60,12 +54,9 @@ export default function App() {
                     <OnRamp onSuccess={handleSuccess} />
                 )}
 
-                {/* Footer */}
-                <footer className="footer">
-                    <p className="footer-text">
-                        Built with <Heart size={14} className="footer-heart" fill="currentColor" /> for XRPL Sydney Hackathon 2026
-                    </p>
-                </footer>
+                {activeTab === 'Master' && (
+                    <MasterWallet />
+                )}
             </main>
 
             {/* Mobile Bottom Nav */}
@@ -73,9 +64,9 @@ export default function App() {
                 <div className="mobile-nav-items">
                     {[
                         { tab: 'Swap', icon: <ArrowLeftRight size={18} />, label: 'Swap' },
-                        { tab: 'Liquidity', icon: <Droplets size={18} />, label: 'Liquidity' },
                         { tab: 'Transfer', icon: <Send size={18} />, label: 'Send' },
                         { tab: 'On-Ramp', icon: <QrCode size={18} />, label: 'Deposit' },
+                        { tab: 'Master', icon: <Shield size={18} />, label: 'Master' },
                     ].map(({ tab, icon, label }) => (
                         <button
                             key={tab}
