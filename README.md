@@ -269,11 +269,3 @@ User: Swap 100 mMacca → mQantas
 | Explorer Links | XRPL Testnet | ✅ |
 
 ---
-
-## 📝 License
-
-MIT — Built with ❤️ for the **XRPL Sydney Hackathon 2026**
-
----
-
-*"Meet Sarah, a Sydney professional drowning in Macca's points but short on Qantas for her Bali trip. She opens LoyaltySwap, swaps 1,000 mMacca for 792 mQantas via a real XRPL Payment — executed in 4 seconds — and books her flight. Finally unlocking $10B AU loyalty value."*
