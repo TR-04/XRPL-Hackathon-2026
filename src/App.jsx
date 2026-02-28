@@ -29,7 +29,6 @@ export default function App() {
             <main className="app-container">
                 {/* Hero */}
                 <div className="hero-section">
-                    <div className="hero-title">Swap Loyalty Anywhere</div>
                     <h1 className="hero-subtitle">
                         {activeTab === 'Swap' && 'Swap loyalty points instantly'}
                         {activeTab === 'Transfer' && 'Send points to anyone'}

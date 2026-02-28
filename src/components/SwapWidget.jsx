@@ -5,6 +5,7 @@ import { getQuote as getLocalQuote, generateTxHash } from '../data/pools';
 import { useWallet } from '../context/WalletContext';
 import api from '../services/api';
 import TokenSelector from './TokenSelector';
+import { TokenLogo } from './BrandGrid';
 
 export default function SwapWidget({ onSuccess }) {
     const { connected, connectWallet, getBalance, updateBalance, refreshBalances, backendOnline, walletSeed } = useWallet();
@@ -154,13 +155,13 @@ export default function SwapWidget({ onSuccess }) {
                             className="token-select-btn"
                             onClick={() => setSelectorOpen('from')}
                         >
-                            <span className="token-emoji">{fromData.emoji}</span>
+                            <TokenLogo token={fromData} size={22} className="token-emoji" />
                             {fromData.symbol}
                             <ChevronDown size={14} className="chevron" />
                         </button>
                     </div>
                     <div className="swap-panel-footer">
-                        <span>${(numAmount * fromData.price).toFixed(2)}</span>
+                        <span></span>
                         <span
                             className="swap-panel-balance"
                             onClick={handleMaxClick}
@@ -192,13 +193,13 @@ export default function SwapWidget({ onSuccess }) {
                             className="token-select-btn"
                             onClick={() => setSelectorOpen('to')}
                         >
-                            <span className="token-emoji">{toData.emoji}</span>
+                            <TokenLogo token={toData} size={22} className="token-emoji" />
                             {toData.symbol}
                             <ChevronDown size={14} className="chevron" />
                         </button>
                     </div>
                     <div className="swap-panel-footer">
-                        <span>${quote ? (quote.amountOut * toData.price).toFixed(2) : '0.00'}</span>
+                        <span></span>
                         <span>Balance: {getBalance(toToken).toLocaleString()}</span>
                     </div>
                 </div>
@@ -212,14 +213,7 @@ export default function SwapWidget({ onSuccess }) {
                                 1 {fromData.symbol} = {quote.rate.toFixed(4)} {toData.symbol}
                             </span>
                         </div>
-                        <div className="swap-info-row">
-                            <span className="swap-info-label">Price Impact</span>
-                            <span className="swap-info-value" style={{
-                                color: quote.priceImpact > 3 ? 'var(--red)' : 'var(--text-secondary)'
-                            }}>
-                                {quote.priceImpact.toFixed(2)}%
-                            </span>
-                        </div>
+
                         <div className="swap-info-row">
                             <span className="swap-info-label">Route</span>
                             <div className="swap-path">

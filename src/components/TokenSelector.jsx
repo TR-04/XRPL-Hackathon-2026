@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
-import { X, Search } from 'lucide-react';
+import { X } from 'lucide-react';
 import { TOKENS } from '../data/tokens';
 import { useWallet } from '../context/WalletContext';
+import { TokenLogo } from './BrandGrid';
 
 export default function TokenSelector({ isOpen, onClose, onSelect, excludeToken }) {
     const [search, setSearch] = useState('');
@@ -49,7 +50,7 @@ export default function TokenSelector({ isOpen, onClose, onSelect, excludeToken 
                                     className="token-list-emoji"
                                     style={{ background: token.colorLight }}
                                 >
-                                    {token.emoji}
+                                    <TokenLogo token={token} size={24} />
                                 </div>
                                 <div>
                                     <div className="token-list-name">{token.symbol}</div>
