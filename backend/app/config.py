@@ -62,7 +62,7 @@ BRANDS = {
 
 # Pool seed amounts (in drops for XRP side, token units for token side)
 POOL_SEED_TOKEN_AMOUNT = 100_000
-POOL_SEED_XRP_AMOUNT = 10_000  # XRP
+POOL_SEED_XRP_AMOUNT = 100  # XRP
 
 # All brand names for iteration
 BRAND_NAMES = list(BRANDS.keys())
