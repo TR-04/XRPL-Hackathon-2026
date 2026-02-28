@@ -5,6 +5,7 @@ import { getPool } from '../data/pools';
 import { useWallet } from '../context/WalletContext';
 import api from '../services/api';
 import TokenSelector from './TokenSelector';
+import { TokenLogo } from './BrandGrid';
 
 export default function LiquidityPanel({ onSuccess }) {
     const { connected, getBalance, updateBalance, connectWallet, refreshBalances } = useWallet();
@@ -79,7 +80,7 @@ export default function LiquidityPanel({ onSuccess }) {
                                 onChange={e => setAmountA(e.target.value)}
                             />
                             <button className="token-select-btn" onClick={() => setSelectorOpen('a')}>
-                                <span className="token-emoji">{dataA.emoji}</span>
+                                <TokenLogo token={dataA} size={22} className="token-emoji" />
                                 {dataA.symbol}
                                 <ChevronDown size={14} className="chevron" />
                             </button>
@@ -95,7 +96,7 @@ export default function LiquidityPanel({ onSuccess }) {
                                 onChange={e => setAmountB(e.target.value)}
                             />
                             <button className="token-select-btn" onClick={() => setSelectorOpen('b')}>
-                                <span className="token-emoji">{dataB.emoji}</span>
+                                <TokenLogo token={dataB} size={22} className="token-emoji" />
                                 {dataB.symbol}
                                 <ChevronDown size={14} className="chevron" />
                             </button>
