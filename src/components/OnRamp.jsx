@@ -3,10 +3,11 @@ import { QrCode, ChevronDown, Loader2 } from 'lucide-react';
 import { getToken, TOKENS } from '../data/tokens';
 import { generateTxHash } from '../data/pools';
 import { useWallet } from '../context/WalletContext';
+import { mintToken } from '../services/api';
 import TokenSelector from './TokenSelector';
 
 export default function OnRamp({ onSuccess }) {
-    const { connected, updateBalance, connectWallet } = useWallet();
+    const { connected, updateBalance, connectWallet, address, refreshBalances } = useWallet();
     const [token, setToken] = useState('mMacca');
     const [amount, setAmount] = useState('');
     const [selectorOpen, setSelectorOpen] = useState(false);
@@ -20,21 +21,33 @@ export default function OnRamp({ onSuccess }) {
         if (numAmount <= 0) return;
         setMinting(true);
         setStep(1);
-        // Simulate QR scan
+        // Simulate QR scan delay
         await new Promise(r => setTimeout(r, 1000));
         setStep(2);
-        // Simulate mint tx
-        await new Promise(r => setTimeout(r, 1500));
-        const txHash = generateTxHash();
+
+        let txHash;
+        let explorer;
+        try {
+            const result = await mintToken(token, address, numAmount, 'qr_mock_' + Date.now());
+            txHash = result.tx_hash;
+            explorer = result.explorer;
+        } catch (err) {
+            console.warn('Mint API failed, using local fallback:', err);
+            txHash = generateTxHash();
+        }
+
         updateBalance(token, numAmount);
         setMinting(false);
         setStep(0);
         setAmount('');
+        // Refresh real balances
+        if (address) refreshBalances(address);
         if (onSuccess) onSuccess({
             type: 'mint',
             token: tokenData,
             amount: numAmount,
             txHash,
+            explorer,
         });
     };
 

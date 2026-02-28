@@ -33,7 +33,7 @@ export default function SuccessOverlay({ data, onClose }) {
         return `Swapped ${data.amountIn.toLocaleString()} ${data.fromToken.symbol} for ${data.amountOut.toLocaleString()} ${data.toToken.symbol}`;
     };
 
-    const explorerUrl = `https://testnet.xrpl.org/transactions/${data.txHash}`;
+    const explorerUrl = data.explorer || `https://testnet.xrpl.org/transactions/${data.txHash}`;
 
     return (
         <div className="success-overlay">

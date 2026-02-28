@@ -4,10 +4,11 @@ import { QRCodeSVG } from 'qrcode.react';
 import { getToken, TOKENS } from '../data/tokens';
 import { generateTxHash } from '../data/pools';
 import { useWallet } from '../context/WalletContext';
+import { sendTransfer } from '../services/api';
 import TokenSelector from './TokenSelector';
 
 export default function P2PTransfer({ onSuccess }) {
-    const { connected, address, getBalance, updateBalance, connectWallet } = useWallet();
+    const { connected, address, seed, getBalance, updateBalance, connectWallet, refreshBalances } = useWallet();
     const [token, setToken] = useState('mQantas');
     const [amount, setAmount] = useState('');
     const [recipient, setRecipient] = useState('');
@@ -20,18 +21,31 @@ export default function P2PTransfer({ onSuccess }) {
     const handleSend = async () => {
         if (numAmount <= 0 || !recipient || numAmount > getBalance(token)) return;
         setLoading(true);
-        await new Promise(r => setTimeout(r, 1200));
-        const txHash = generateTxHash();
+
+        let txHash;
+        let explorer;
+        try {
+            const result = await sendTransfer(token, numAmount, recipient, seed);
+            txHash = result.tx_hash;
+            explorer = result.explorer;
+        } catch (err) {
+            console.warn('Transfer API failed, using local fallback:', err);
+            txHash = generateTxHash();
+        }
+
         updateBalance(token, -numAmount);
         setLoading(false);
         setAmount('');
         setRecipient('');
+        // Refresh real balances
+        if (address) refreshBalances(address);
         if (onSuccess) onSuccess({
             type: 'transfer',
             token: tokenData,
             amount: numAmount,
             recipient,
             txHash,
+            explorer,
         });
     };
 

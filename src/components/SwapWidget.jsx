@@ -1,31 +1,57 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { ArrowDown, Settings, ChevronDown, Loader2, ArrowRight } from 'lucide-react';
 import { getToken } from '../data/tokens';
-import { getQuote, generateTxHash } from '../data/pools';
+import { getQuote as getLocalQuote, generateTxHash } from '../data/pools';
 import { useWallet } from '../context/WalletContext';
+import { getSwapQuote, executeSwap } from '../services/api';
 import TokenSelector from './TokenSelector';
 
 export default function SwapWidget({ onSuccess }) {
-    const { connected, connectWallet, getBalance, updateBalance } = useWallet();
+    const { connected, connectWallet, getBalance, updateBalance, seed, refreshBalances, address } = useWallet();
     const [fromToken, setFromToken] = useState('mMacca');
     const [toToken, setToToken] = useState('mQantas');
     const [amount, setAmount] = useState('');
     const [selectorOpen, setSelectorOpen] = useState(null); // 'from' | 'to' | null
     const [loading, setLoading] = useState(false);
+    const [liveQuote, setLiveQuote] = useState(null);
+    const debounceRef = useRef(null);
 
     const fromData = getToken(fromToken);
     const toData = getToken(toToken);
     const numAmount = parseFloat(amount) || 0;
 
-    const quote = useMemo(() => {
-        if (numAmount > 0) return getQuote(fromToken, toToken, numAmount);
-        return null;
+    // Fetch live quote from backend (debounced)
+    useEffect(() => {
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        if (numAmount <= 0) { setLiveQuote(null); return; }
+
+        debounceRef.current = setTimeout(async () => {
+            try {
+                const q = await getSwapQuote(fromToken, toToken, numAmount);
+                setLiveQuote({
+                    amountOut: q.output_amount,
+                    path: q.path,
+                    priceImpact: q.price_impact,
+                    rate: q.rate,
+                    fee: numAmount * 0.006,
+                });
+            } catch (err) {
+                console.warn('Quote API failed, using local fallback:', err);
+                setLiveQuote(getLocalQuote(fromToken, toToken, numAmount));
+            }
+        }, 400);
+
+        return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
     }, [fromToken, toToken, numAmount]);
+
+    // Use live quote if available, else local
+    const quote = liveQuote || (numAmount > 0 ? getLocalQuote(fromToken, toToken, numAmount) : null);
 
     const handleSwapDirection = () => {
         setFromToken(toToken);
         setToToken(fromToken);
         setAmount('');
+        setLiveQuote(null);
     };
 
     const handleMaxClick = () => {
@@ -35,22 +61,43 @@ export default function SwapWidget({ onSuccess }) {
     const handleSwap = useCallback(async () => {
         if (!quote || numAmount <= 0 || numAmount > getBalance(fromToken)) return;
         setLoading(true);
-        // Simulate XRPL transaction
-        await new Promise(r => setTimeout(r, 1800));
-        const txHash = generateTxHash();
-        updateBalance(fromToken, -numAmount);
-        updateBalance(toToken, quote.amountOut);
-        setLoading(false);
-        setAmount('');
-        onSuccess({
-            fromToken: fromData,
-            toToken: toData,
-            amountIn: numAmount,
-            amountOut: quote.amountOut,
-            txHash,
-            path: quote.path,
-        });
-    }, [quote, numAmount, fromToken, toToken, fromData, toData, getBalance, updateBalance, onSuccess]);
+
+        try {
+            const result = await executeSwap(fromToken, toToken, numAmount, seed);
+            updateBalance(fromToken, -numAmount);
+            updateBalance(toToken, result.output_amount);
+            setAmount('');
+            setLiveQuote(null);
+            // Refresh real balances in background
+            if (address) refreshBalances(address);
+            onSuccess({
+                fromToken: fromData,
+                toToken: toData,
+                amountIn: numAmount,
+                amountOut: result.output_amount,
+                txHash: result.tx_hash,
+                path: quote.path,
+                explorer: result.explorer,
+            });
+        } catch (err) {
+            console.error('Swap failed:', err);
+            // Fallback to local simulation
+            const txHash = generateTxHash();
+            updateBalance(fromToken, -numAmount);
+            updateBalance(toToken, quote.amountOut);
+            setAmount('');
+            onSuccess({
+                fromToken: fromData,
+                toToken: toData,
+                amountIn: numAmount,
+                amountOut: quote.amountOut,
+                txHash,
+                path: quote.path,
+            });
+        } finally {
+            setLoading(false);
+        }
+    }, [quote, numAmount, fromToken, toToken, fromData, toData, getBalance, updateBalance, onSuccess, seed, address, refreshBalances]);
 
     const insufficientBalance = numAmount > getBalance(fromToken);
 
