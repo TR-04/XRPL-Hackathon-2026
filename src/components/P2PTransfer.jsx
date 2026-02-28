@@ -6,6 +6,7 @@ import { generateTxHash } from '../data/pools';
 import { useWallet } from '../context/WalletContext';
 import api from '../services/api';
 import TokenSelector from './TokenSelector';
+import { TokenLogo } from './BrandGrid';
 
 export default function P2PTransfer({ onSuccess }) {
     const wallet = useWallet();
@@ -38,7 +39,7 @@ export default function P2PTransfer({ onSuccess }) {
                     <p style={{ color: 'red' }}>Token "{token}" not found. Please select a valid token.</p>
                     <TokenSelector
                         isOpen={true}
-                        onClose={() => {}}
+                        onClose={() => { }}
                         onSelect={(t) => setToken(t)}
                         excludeToken={null}
                     />
@@ -89,7 +90,7 @@ export default function P2PTransfer({ onSuccess }) {
             }
         }
 
-        
+
         if (onSuccess) {
             onSuccess({
                 type: 'transfer',
@@ -129,16 +130,17 @@ export default function P2PTransfer({ onSuccess }) {
                     <div className="lp-input-row">
                         <input
                             className="lp-input"
-                            type="number"
+                            type="text"
+                            inputMode="decimal"
                             placeholder="0"
                             value={amount}
-                            onChange={e => setAmount(e.target.value)}
+                            onChange={e => { if (/^\d*\.?\d*$/.test(e.target.value)) setAmount(e.target.value); }}
                         />
                         <button
                             className="token-select-btn"
                             onClick={() => setSelectorOpen(true)}
                         >
-                            <span className="token-emoji">{tokenData.emoji}</span>
+                            <TokenLogo token={tokenData} size={22} className="token-emoji" />
                             {tokenData.symbol}
                             <ChevronDown size={14} className="chevron" />
                         </button>

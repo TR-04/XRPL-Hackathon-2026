@@ -5,6 +5,7 @@ import { generateTxHash } from '../data/pools';
 import { useWallet } from '../context/WalletContext';
 import api from '../services/api';
 import TokenSelector from './TokenSelector';
+import { TokenLogo } from './BrandGrid';
 
 export default function OnRamp({ onSuccess }) {
     const { connected, address, walletSeed, updateBalance, connectWallet, refreshBalances } = useWallet();
@@ -96,14 +97,15 @@ export default function OnRamp({ onSuccess }) {
                     <div className="lp-input-row">
                         <input
                             className="lp-input"
-                            type="number"
+                            type="text"
+                            inputMode="decimal"
                             placeholder="0"
                             value={amount}
-                            onChange={e => setAmount(e.target.value)}
+                            onChange={e => { if (/^\d*\.?\d*$/.test(e.target.value)) setAmount(e.target.value); }}
                             disabled={minting}
                         />
                         <button className="token-select-btn" onClick={() => !minting && setSelectorOpen(true)}>
-                            <span className="token-emoji">{tokenData.emoji}</span>
+                            <TokenLogo token={tokenData} size={22} className="token-emoji" />
                             {tokenData.symbol}
                             <ChevronDown size={14} className="chevron" />
                         </button>

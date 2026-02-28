@@ -947,7 +947,7 @@ body {
 }
 
 .lp-header h3 {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
 }
 
@@ -986,10 +986,18 @@ body {
   border: none;
   outline: none;
   font-family: 'Inter', sans-serif;
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 600;
   color: var(--text-primary);
   min-width: 0;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.lp-input::-webkit-outer-spin-button,
+.lp-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .lp-input::placeholder {
@@ -1045,7 +1053,7 @@ body {
 
 /* ===== P2P Transfer ===== */
 .transfer-section {
-  max-width: 560px;
+  max-width: 620px;
   margin: 0 auto 48px;
   animation: slideUp 0.6s ease;
   overflow: visible;
@@ -1067,7 +1075,7 @@ body {
   background: var(--dark-surface);
   color: var(--text-primary);
   font-family: 'Inter', monospace;
-  font-size: 14px;
+  font-size: 16px;
   outline: none;
   margin-bottom: 12px;
   transition: border-color 0.2s;
@@ -1088,7 +1096,7 @@ body {
   background: linear-gradient(135deg, var(--pink), var(--purple));
   color: white;
   font-family: 'Inter', sans-serif;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s;
@@ -1128,7 +1136,7 @@ body {
 
 /* ===== On-Ramp ===== */
 .onramp-section {
-  max-width: 560px;
+  max-width: 620px;
   margin: 0 auto 48px;
   animation: slideUp 0.6s ease;
   overflow: visible;
@@ -1174,13 +1182,13 @@ body {
 }
 
 .onramp-step-title {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   margin-bottom: 2px;
 }
 
 .onramp-step-desc {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-tertiary);
 }
 
@@ -1192,7 +1200,7 @@ body {
   background: var(--pink);
   color: white;
   font-family: 'Inter', sans-serif;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s;
