@@ -3,10 +3,11 @@ import { QrCode, ChevronDown, Loader2 } from 'lucide-react';
 import { getToken, TOKENS } from '../data/tokens';
 import { generateTxHash } from '../data/pools';
 import { useWallet } from '../context/WalletContext';
+import api from '../services/api';
 import TokenSelector from './TokenSelector';
 
 export default function OnRamp({ onSuccess }) {
-    const { connected, updateBalance, connectWallet } = useWallet();
+    const { connected, address, walletSeed, updateBalance, connectWallet, refreshBalances } = useWallet();
     const [token, setToken] = useState('mMacca');
     const [amount, setAmount] = useState('');
     const [selectorOpen, setSelectorOpen] = useState(false);
@@ -20,16 +21,37 @@ export default function OnRamp({ onSuccess }) {
         if (numAmount <= 0) return;
         setMinting(true);
         setStep(1);
-        // Simulate QR scan
+
+        let txHash = null;
+
+        // Simulate QR scan delay
         await new Promise(r => setTimeout(r, 1000));
         setStep(2);
-        // Simulate mint tx
-        await new Promise(r => setTimeout(r, 1500));
-        const txHash = generateTxHash();
+
+        try {
+            // Try real API mint
+            const result = await api.mintToken(token, address, numAmount, `${token}_qr_mock_${Date.now()}`, walletSeed);
+            if (result && result.tx_hash) {
+                txHash = result.tx_hash;
+            }
+        } catch (e) {
+            console.warn('API mint failed, using simulated:', e.message);
+        }
+
+        if (!txHash) {
+            // Fallback: simulate mint
+            await new Promise(r => setTimeout(r, 1000));
+            txHash = generateTxHash();
+        }
+
         updateBalance(token, numAmount);
         setMinting(false);
         setStep(0);
         setAmount('');
+
+        // Refresh from backend
+        refreshBalances();
+
         if (onSuccess) onSuccess({
             type: 'mint',
             token: tokenData,

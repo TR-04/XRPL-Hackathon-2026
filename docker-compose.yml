@@ -1,0 +1,33 @@
+# LoyaltySwap — docker-compose up → instantly demo ready
+version: "3.9"
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=http://backend:8000
+    depends_on:
+      - backend
+    networks:
+      - loyaltyswap
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - XRPL_NODE_URL=https://s.altnet.rippletest.net:51234/
+      - JWT_SECRET=loyaltyswap_hackathon_2026_secret_key
+      - CORS_ORIGINS=http://localhost:3000,http://frontend:3000
+    networks:
+      - loyaltyswap
+
+networks:
+  loyaltyswap:
+    driver: bridge

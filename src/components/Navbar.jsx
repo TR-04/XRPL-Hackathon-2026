@@ -4,7 +4,7 @@ import { useWallet } from '../context/WalletContext';
 const TABS = ['Swap', 'Liquidity', 'Transfer', 'On-Ramp'];
 
 export default function Navbar({ activeTab, onTabChange }) {
-    const { connected, connecting, address, connectWallet, disconnectWallet } = useWallet();
+    const { connected, connecting, connectStatus, address, xrpBalance, backendOnline, connectWallet, disconnectWallet } = useWallet();
 
     const truncatedAddress = address
         ? `${address.slice(0, 6)}...${address.slice(-4)}`
@@ -31,13 +31,14 @@ export default function Navbar({ activeTab, onTabChange }) {
 
             <div className="navbar-right">
                 <div className="network-badge">
-                    <span className="network-dot" />
+                    <span className="network-dot" style={{ background: backendOnline ? 'var(--green)' : '#FFD700' }} />
                     XRPL Testnet
                 </div>
                 {connected ? (
                     <button className="connect-btn connected" onClick={disconnectWallet}>
                         <div className="wallet-avatar" />
                         {truncatedAddress}
+                        {xrpBalance && <span style={{ color: 'var(--text-secondary)', fontSize: 12, marginLeft: 4 }}>({parseFloat(xrpBalance).toFixed(1)} XRP)</span>}
                         <ChevronDown size={14} />
                     </button>
                 ) : (
@@ -49,12 +50,12 @@ export default function Navbar({ activeTab, onTabChange }) {
                         {connecting ? (
                             <>
                                 <Loader2 size={16} className="spinning" style={{ animation: 'spin 1s linear infinite' }} />
-                                Connecting…
+                                {connectStatus || 'Connecting…'}
                             </>
                         ) : (
                             <>
                                 <Wallet size={16} />
-                                Connect Wallet
+                                Connect Xaman
                             </>
                         )}
                     </button>

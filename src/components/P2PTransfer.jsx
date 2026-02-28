@@ -4,13 +4,15 @@ import { QRCodeSVG } from 'qrcode.react';
 import { getToken, TOKENS } from '../data/tokens';
 import { generateTxHash } from '../data/pools';
 import { useWallet } from '../context/WalletContext';
+import api from '../services/api';
 import TokenSelector from './TokenSelector';
 
 export default function P2PTransfer({ onSuccess }) {
-    const { connected, address, getBalance, updateBalance, connectWallet } = useWallet();
+    const { connected, address, getBalance, updateBalance, connectWallet, refreshBalances, walletSeed } = useWallet();
     const [token, setToken] = useState('mQantas');
     const [amount, setAmount] = useState('');
     const [recipient, setRecipient] = useState('');
+    const [memo, setMemo] = useState('');
     const [selectorOpen, setSelectorOpen] = useState(false);
     const [loading, setLoading] = useState(false);
 
@@ -20,12 +22,31 @@ export default function P2PTransfer({ onSuccess }) {
     const handleSend = async () => {
         if (numAmount <= 0 || !recipient || numAmount > getBalance(token)) return;
         setLoading(true);
-        await new Promise(r => setTimeout(r, 1200));
-        const txHash = generateTxHash();
+
+        let txHash = null;
+
+        try {
+            const result = await api.sendTransfer(token, numAmount, recipient, walletSeed, memo);
+            if (result && result.tx_hash) {
+                txHash = result.tx_hash;
+            }
+        } catch (e) {
+            console.warn('API transfer failed, using simulated:', e.message);
+        }
+
+        if (!txHash) {
+            await new Promise(r => setTimeout(r, 1200));
+            txHash = generateTxHash();
+        }
+
         updateBalance(token, -numAmount);
         setLoading(false);
         setAmount('');
         setRecipient('');
+        setMemo('');
+
+        refreshBalances();
+
         if (onSuccess) onSuccess({
             type: 'transfer',
             token: tokenData,
@@ -51,7 +72,7 @@ export default function P2PTransfer({ onSuccess }) {
                     onChange={e => setRecipient(e.target.value)}
                 />
 
-                <div className="lp-input-card" style={{ marginBottom: 16 }}>
+                <div className="lp-input-card" style={{ marginBottom: 12 }}>
                     <div className="lp-input-row">
                         <input
                             className="lp-input"
@@ -71,6 +92,15 @@ export default function P2PTransfer({ onSuccess }) {
                         <span>Balance: {getBalance(token).toLocaleString()}</span>
                     </div>
                 </div>
+
+                <input
+                    className="transfer-addr-input"
+                    type="text"
+                    placeholder="Memo (optional) — e.g. Happy birthday! 🎉"
+                    value={memo}
+                    onChange={e => setMemo(e.target.value)}
+                    style={{ marginBottom: 16 }}
+                />
 
                 <button
                     className="transfer-send-btn"

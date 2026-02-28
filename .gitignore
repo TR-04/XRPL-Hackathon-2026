@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+backend/venv/
+backend/__pycache__/
+
+# Build output
+dist/
+
+# Environment / secrets
+.env
+backend/.env
+backend/.issuer_wallets.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+*.log
+
+# Test files
+backend/test_hex.py
+backend/test_hex2.py

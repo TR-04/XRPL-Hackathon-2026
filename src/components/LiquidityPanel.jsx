@@ -1,18 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { TOKENS, getToken } from '../data/tokens';
 import { getPool } from '../data/pools';
 import { useWallet } from '../context/WalletContext';
+import api from '../services/api';
 import TokenSelector from './TokenSelector';
 
 export default function LiquidityPanel({ onSuccess }) {
-    const { connected, getBalance, updateBalance, connectWallet } = useWallet();
+    const { connected, getBalance, updateBalance, connectWallet, refreshBalances } = useWallet();
     const [tokenA, setTokenA] = useState('mMacca');
     const [tokenB, setTokenB] = useState('mQantas');
     const [amountA, setAmountA] = useState('');
     const [amountB, setAmountB] = useState('');
     const [selectorOpen, setSelectorOpen] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [poolData, setPoolData] = useState(null);
 
     const dataA = getToken(tokenA);
     const dataB = getToken(tokenB);
@@ -20,6 +22,24 @@ export default function LiquidityPanel({ onSuccess }) {
     const poolB = getPool(tokenB);
     const numA = parseFloat(amountA) || 0;
     const numB = parseFloat(amountB) || 0;
+
+    // Fetch live pool data from backend
+    useEffect(() => {
+        api.getPools().then(data => {
+            if (data && data.pools) setPoolData(data.pools);
+        }).catch(() => {});
+    }, []);
+
+    const getPoolStats = (tokenId) => {
+        if (poolData) {
+            const p = poolData.find(pool => pool.currency === tokenId);
+            if (p) return { tvl: p.tvl, apy: p.apy, volume: p.volume_24h };
+        }
+        const local = getPool(tokenId);
+        return local ? { tvl: local.tvl, apy: local.apy, volume: local.volume24h } : {};
+    };
+
+    const stats = getPoolStats(tokenA);
 
     const handleAdd = async () => {
         if (numA <= 0 || numB <= 0) return;
@@ -30,6 +50,7 @@ export default function LiquidityPanel({ onSuccess }) {
         setLoading(false);
         setAmountA('');
         setAmountB('');
+        refreshBalances();
         if (onSuccess) onSuccess({
             type: 'liquidity',
             tokenA: dataA,
@@ -85,11 +106,11 @@ export default function LiquidityPanel({ onSuccess }) {
                 <div className="lp-stats">
                     <div className="lp-stat">
                         <div className="lp-stat-label">Pool TVL</div>
-                        <div className="lp-stat-value">${poolA ? poolA.tvl.toLocaleString() : '—'}</div>
+                        <div className="lp-stat-value">${stats.tvl ? stats.tvl.toLocaleString() : '—'}</div>
                     </div>
                     <div className="lp-stat">
                         <div className="lp-stat-label">APY</div>
-                        <div className="lp-stat-value" style={{ color: 'var(--green)' }}>{poolA ? poolA.apy : '—'}%</div>
+                        <div className="lp-stat-value" style={{ color: 'var(--green)' }}>{stats.apy || '—'}%</div>
                     </div>
                     <div className="lp-stat">
                         <div className="lp-stat-label">Your Share</div>
