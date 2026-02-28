@@ -1,0 +1,30 @@
+{
+  "mMacca": {
+    "seed": "sEdSgpBcRZ65j1cdtVBDykWwiLnC2RR",
+    "address": "raZB1nK8VEDKzDtbmGVQdRSusrKPL9Ua9u"
+  },
+  "mQantas": {
+    "seed": "sEdSywwZTCziQrd2gt374U1S28dLHBC",
+    "address": "rHiR1PurD2Mnw5b1xA4GbhQZWbqdoVuEnq"
+  },
+  "mJetstar": {
+    "seed": "sEd7UerpMabrG1QZQvQ39KKBCXfYaiz",
+    "address": "r99co4YfUjY7h2RSvhYKGGGHKyGtcDYgzk"
+  },
+  "mGYG": {
+    "seed": "sEdTCd2oiGEUgFkPfqXcfKa8GpfCifR",
+    "address": "rKi1RjpKHnawTN7wdF5neQY5hx6M4a2bfD"
+  },
+  "mApple": {
+    "seed": "sEdSWiysDvjJd8qVXLsMWZiexiz4oPg",
+    "address": "rN3B18cmPjEYvxQy1wSVGjVAVfVnfQ2Lse"
+  },
+  "mMS": {
+    "seed": "sEd7q8ka35vKBs5NRyTH8A7DJaMmHQN",
+    "address": "rBDmG3ZKDy6grLrCGHKdMmyUB5Z8sN8Kbd"
+  },
+  "mWoolies": {
+    "seed": "sEdTFcwQ1gTKhfbMrBZxf8kS4FHLN8f",
+    "address": "rHod6q1zVY1zT14F1G6REUhUzL4oey4isN"
+  }
+}

@@ -7,9 +7,9 @@ backend/__pycache__/
 dist/
 
 # Environment / secrets
-.env
-backend/.env
-backend/.issuer_wallets.json
+# .env
+# backend/.env
+# backend/.issuer_wallets.json
 
 # IDE
 .vscode/
