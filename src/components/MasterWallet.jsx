@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Shield, ExternalLink, RefreshCw, Loader2 } from 'lucide-react';
 import { TOKENS } from '../data/tokens';
+import { TokenLogo } from './BrandGrid';
 import api from '../services/api';
 
 export default function MasterWallet() {
@@ -130,7 +131,7 @@ export default function MasterWallet() {
                             <div key={token.id} className="master-token-row">
                                 <div className="master-token-left">
                                     <div className="master-token-emoji" style={{ background: token.colorLight }}>
-                                        {token.emoji}
+                                        <TokenLogo token={token} size={24} />
                                     </div>
                                     <div>
                                         <div className="master-token-name">{token.symbol}</div>

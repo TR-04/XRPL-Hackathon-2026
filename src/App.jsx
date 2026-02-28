@@ -32,7 +32,7 @@ export default function App() {
                     <h1 className="hero-subtitle">
                         {activeTab === 'Swap' && 'Swap loyalty points instantly'}
                         {activeTab === 'Transfer' && 'Send points to anyone'}
-                        {activeTab === 'On-Ramp' && 'Deposit your loyalty points'}
+                        {activeTab === 'Deposit' && 'Deposit your loyalty points'}
                         {activeTab === 'Master' && 'Protocol revenue dashboard'}
                     </h1>
                 </div>
@@ -49,7 +49,7 @@ export default function App() {
                     <P2PTransfer onSuccess={handleSuccess} />
                 )}
 
-                {activeTab === 'On-Ramp' && (
+                {activeTab === 'Deposit' && (
                     <OnRamp onSuccess={handleSuccess} />
                 )}
 
@@ -64,7 +64,7 @@ export default function App() {
                     {[
                         { tab: 'Swap', icon: <ArrowLeftRight size={18} />, label: 'Swap' },
                         { tab: 'Transfer', icon: <Send size={18} />, label: 'Send' },
-                        { tab: 'On-Ramp', icon: <QrCode size={18} />, label: 'Deposit' },
+                        { tab: 'Deposit', icon: <QrCode size={18} />, label: 'Deposit' },
                         { tab: 'Master', icon: <Shield size={18} />, label: 'Master' },
                     ].map(({ tab, icon, label }) => (
                         <button

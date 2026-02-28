@@ -66,7 +66,7 @@ export default function OnRamp({ onSuccess }) {
             <div className="onramp-card">
                 <div className="lp-header">
                     <h3>Deposit Points</h3>
-                    <span className="lp-badge" style={{ background: 'rgba(39,174,96,0.1)', color: 'var(--green)' }}>On-Ramp</span>
+                    <span className="lp-badge" style={{ background: 'rgba(39,174,96,0.1)', color: 'var(--green)' }}>Deposit</span>
                 </div>
 
                 <div className="onramp-steps">
