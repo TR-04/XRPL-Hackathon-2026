@@ -74,7 +74,7 @@ Uniswap-style two-panel swap interface. Select any loyalty token pair, see live 
 ### 💰 7 Tokenised Australian Brands
 
 | Token | Brand | Description |
-|-------|-------|-------------|-------------|
+|-------|-------|-------------|
 | 🍔 `mMacca` | McDonald's AU | MyMacca's Rewards |
 | ✈️ `mQantas` | Qantas Airways | Frequent Flyer Points |
 | 🛩️ `mJetstar` | Jetstar Airways | Jetstar Rewards |
