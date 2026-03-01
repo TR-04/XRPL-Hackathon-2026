@@ -119,6 +119,9 @@ class XRPLManager:
         # Revenue tracking (in-memory)
         self._revenue: Dict[str, float] = {}
         self._tx_count = 0
+        # Burn / offramp tracking
+        self._burns: Dict[str, float] = {}   # token → total burned
+        self._offramps: List[dict] = []       # redemption receipts
 
     async def initialize(self):
         """Connect to XRPL Testnet and set up issuer infrastructure."""
@@ -866,6 +869,156 @@ class XRPLManager:
                 "issuer": issuer.address if issuer else "",
             })
         return tokens
+
+    # ─── Token Burning ────────────────────────────────────────────
+    async def burn_tokens(self, currency: str, amount: float, user_seed: str) -> dict:
+        """Burn (destroy) tokens by sending them back to the issuer.
+
+        On XRPL, when a user pays tokens back to the issuer, those tokens
+        are effectively destroyed — the issuer's obligation shrinks.
+        """
+        issuer = self.issuer_wallets.get(currency)
+        if not issuer:
+            return {"error": f"Unknown token: {currency}"}
+        if amount <= 0:
+            return {"error": "Amount must be positive"}
+        if not user_seed:
+            return {"error": "No wallet seed provided — cannot sign transaction"}
+
+        hex_code = currency_to_hex(currency)
+        user_wallet = Wallet.from_seed(user_seed)
+        self.user_wallets[user_wallet.address] = user_wallet
+
+        tx_hash = None
+        try:
+            # Send tokens from user back to the issuer (burn)
+            pay_burn = Payment(
+                account=user_wallet.address,
+                destination=issuer.address,
+                amount=IssuedCurrencyAmount(
+                    currency=hex_code,
+                    issuer=issuer.address,
+                    value=str(amount),
+                ),
+            )
+            result = await submit_and_wait(pay_burn, self.client, user_wallet)
+            tx_hash = result.result.get("hash", "")
+            logger.info(f"🔥 Burned {amount} {currency} from {user_wallet.address}: {tx_hash}")
+
+            # Track burn
+            self._burns[currency] = self._burns.get(currency, 0) + amount
+
+            # Return tokens to pool reserve (they flow back to issuer = pool)
+            pool = self.amm_pools.get(currency)
+            if pool:
+                pool["token_reserve"] += amount
+                logger.info(f"  ♻️  Pool reserve restored: {currency} → {pool['token_reserve']:.0f}")
+
+        except Exception as e:
+            logger.warning(f"Burn failed for {currency}: {e}")
+            return {"error": f"Burn failed: {str(e)}"}
+
+        return {
+            "tx_hash": tx_hash,
+            "token": currency,
+            "amount_burned": amount,
+            "user": user_wallet.address,
+            "explorer": f"https://testnet.xrpl.org/transactions/{tx_hash}",
+        }
+
+    # ─── Offramp (Redeem tokens for fiat value) ─────────────────────
+    async def offramp(self, currency: str, amount: float, user_seed: str, payout_method: str = "bank_transfer") -> dict:
+        """Offramp: redeem loyalty tokens for fiat-equivalent value.
+
+        Flow:
+          1. 0.3% exit fee deducted
+          2. Net tokens are burned (sent back to issuer)
+          3. AUD-equivalent value is calculated from token price
+          4. A redemption receipt is recorded
+
+        In production this would trigger an actual fiat payout; for the
+        hackathon demo it records the receipt and burns the tokens on-ledger.
+        """
+        issuer = self.issuer_wallets.get(currency)
+        if not issuer:
+            return {"error": f"Unknown token: {currency}"}
+        if amount <= 0:
+            return {"error": "Amount must be positive"}
+        if not user_seed:
+            return {"error": "No wallet seed provided — cannot sign transaction"}
+
+        # Look up the token price for AUD conversion
+        token_info = next((t for t in BRAND_TOKENS if t["currency"] == currency), None)
+        if not token_info:
+            return {"error": f"Token metadata not found: {currency}"}
+
+        # Deduct 0.3% exit fee
+        fee_amount = round(amount * self.PROTOCOL_FEE, 2)
+        net_amount = round(amount - fee_amount, 2)
+
+        hex_code = currency_to_hex(currency)
+        user_wallet = Wallet.from_seed(user_seed)
+        self.user_wallets[user_wallet.address] = user_wallet
+
+        tx_hash = None
+        try:
+            # Burn net tokens (user → issuer)
+            pay_burn = Payment(
+                account=user_wallet.address,
+                destination=issuer.address,
+                amount=IssuedCurrencyAmount(
+                    currency=hex_code,
+                    issuer=issuer.address,
+                    value=str(net_amount),
+                ),
+            )
+            result = await submit_and_wait(pay_burn, self.client, user_wallet)
+            tx_hash = result.result.get("hash", "")
+            logger.info(f"💸 Offramp burn: {net_amount} {currency} from {user_wallet.address}: {tx_hash}")
+
+            # Collect exit fee to master wallet
+            if fee_amount > 0:
+                await self._collect_fee(currency, fee_amount)
+
+            # Track burn
+            self._burns[currency] = self._burns.get(currency, 0) + net_amount
+
+            # Return tokens to pool reserve
+            pool = self.amm_pools.get(currency)
+            if pool:
+                pool["token_reserve"] += net_amount
+
+        except Exception as e:
+            logger.warning(f"Offramp failed for {currency}: {e}")
+            return {"error": f"Offramp failed: {str(e)}"}
+
+        # Calculate AUD payout
+        aud_value = round(net_amount * token_info["price"], 2)
+
+        receipt = {
+            "tx_hash": tx_hash,
+            "token": currency,
+            "amount_redeemed": amount,
+            "exit_fee": fee_amount,
+            "net_burned": net_amount,
+            "aud_value": aud_value,
+            "payout_method": payout_method,
+            "status": "completed",
+            "user": user_wallet.address,
+            "explorer": f"https://testnet.xrpl.org/transactions/{tx_hash}",
+        }
+        self._offramps.append(receipt)
+        logger.info(f"  📝 Offramp receipt: {net_amount} {currency} → ${aud_value} AUD ({payout_method})")
+
+        return receipt
+
+    async def get_burn_stats(self) -> dict:
+        """Return aggregate burn and offramp statistics."""
+        return {
+            "total_burned": self._burns,
+            "offramp_count": len(self._offramps),
+            "offramps": self._offramps[-50:],  # last 50
+        }
 
     async def get_master_balances(self) -> dict:
         """Get the master wallet address and all token balances (protocol revenue)."""

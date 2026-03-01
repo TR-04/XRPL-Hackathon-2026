@@ -50,6 +50,17 @@ class TransferRequest(BaseModel):
 class CreateWalletRequest(BaseModel):
     pass
 
+class BurnRequest(BaseModel):
+    token: str
+    amount: float
+    wallet_seed: str
+
+class OfframpRequest(BaseModel):
+    token: str
+    amount: float
+    wallet_seed: str
+    payout_method: Optional[str] = "bank_transfer"
+
 
 # ──────────────────────────────────────────────
 # Auth Endpoints
@@ -223,6 +234,51 @@ async def create_amm_pools(request: Request):
     xrpl = request.app.state.xrpl
     results = await xrpl.create_amm_pools_on_ledger()
     return {"results": results}
+
+
+# ──────────────────────────────────────────────
+# Token Burn Endpoints
+# ──────────────────────────────────────────────
+
+@router.post("/api/v1/tokens/burn")
+async def burn_tokens(req: BurnRequest, request: Request):
+    """Burn (destroy) tokens by sending them back to the issuer."""
+    xrpl = request.app.state.xrpl
+    result = await xrpl.burn_tokens(
+        currency=req.token,
+        amount=req.amount,
+        user_seed=req.wallet_seed,
+    )
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return result
+
+
+@router.get("/api/v1/tokens/burns")
+async def burn_stats(request: Request):
+    """Get aggregate burn and offramp statistics."""
+    xrpl = request.app.state.xrpl
+    return await xrpl.get_burn_stats()
+
+
+# ──────────────────────────────────────────────
+# Offramp (Token Redemption) Endpoints
+# ──────────────────────────────────────────────
+
+@router.post("/api/v1/offramp/redeem")
+async def offramp_redeem(req: OfframpRequest, request: Request):
+    """Redeem loyalty tokens for fiat-equivalent AUD value.
+    Burns tokens on-ledger and records a payout receipt."""
+    xrpl = request.app.state.xrpl
+    result = await xrpl.offramp(
+        currency=req.token,
+        amount=req.amount,
+        user_seed=req.wallet_seed,
+        payout_method=req.payout_method or "bank_transfer",
+    )
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return result
 
 
 # ──────────────────────────────────────────────
