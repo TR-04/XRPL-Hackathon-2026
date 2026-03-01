@@ -1,16 +1,10 @@
 import { useState } from 'react';
-import { Banknote, ChevronDown, Loader2, ArrowDown, CheckCircle } from 'lucide-react';
+import { Repeat, ChevronDown, Loader2, ArrowDown, CheckCircle, Clock, Ticket } from 'lucide-react';
 import { getToken, TOKENS } from '../data/tokens';
 import { useWallet } from '../context/WalletContext';
 import api from '../services/api';
 import TokenSelector from './TokenSelector';
 import { TokenLogo } from './BrandGrid';
-
-const PAYOUT_METHODS = [
-    { id: 'bank_transfer', label: 'Bank Transfer', icon: '🏦', eta: '1-2 business days' },
-    { id: 'payid', label: 'PayID', icon: '⚡', eta: 'Instant' },
-    { id: 'gift_card', label: 'Gift Card', icon: '🎁', eta: 'Instant' },
-];
 
 export default function Offramp({ onSuccess }) {
     const { connected, address, walletSeed, balances, updateBalance, connectWallet, refreshBalances } = useWallet();
@@ -18,16 +12,13 @@ export default function Offramp({ onSuccess }) {
     const [amount, setAmount] = useState('');
     const [selectorOpen, setSelectorOpen] = useState(false);
     const [redeeming, setRedeeming] = useState(false);
-    const [payoutMethod, setPayoutMethod] = useState('bank_transfer');
-    const [step, setStep] = useState(0); // 0: idle, 1: burning, 2: processing payout, 3: done
+    const [step, setStep] = useState(0); // 0: idle, 1: burning on XRPL, 2: crediting points, 3: done
 
     const tokenData = getToken(token);
     const numAmount = parseFloat(amount) || 0;
     const userBalance = balances[token] || 0;
     const exitFee = +(numAmount * 0.003).toFixed(2);
-    const netAmount = +(numAmount - exitFee).toFixed(2);
-    const audValue = +(netAmount * tokenData.price).toFixed(2);
-    const selectedPayout = PAYOUT_METHODS.find(p => p.id === payoutMethod);
+    const netPoints = +(numAmount - exitFee).toFixed(2);
 
     const handleMax = () => {
         if (userBalance > 0) setAmount(String(userBalance));
@@ -39,15 +30,12 @@ export default function Offramp({ onSuccess }) {
         setStep(1);
 
         try {
-            // Call backend offramp endpoint
-            const result = await api.offramp(token, numAmount, walletSeed, payoutMethod);
+            const result = await api.offramp(token, numAmount, walletSeed, 'points_credit');
 
             setStep(2);
-            // Brief delay to show "processing payout" step
             await new Promise(r => setTimeout(r, 1200));
             setStep(3);
 
-            // Update local balance
             updateBalance(token, -numAmount);
             refreshBalances();
 
@@ -57,9 +45,9 @@ export default function Offramp({ onSuccess }) {
                 type: 'offramp',
                 token: tokenData,
                 amount: numAmount,
-                audValue: result?.aud_value || audValue,
+                netPoints: result?.net_points || netPoints,
                 exitFee: result?.exit_fee || exitFee,
-                payoutMethod: selectedPayout.label,
+                orderId: result?.order_id || '',
                 txHash: result?.tx_hash || '',
             });
 
@@ -77,7 +65,7 @@ export default function Offramp({ onSuccess }) {
         <div className="onramp-section">
             <div className="onramp-card">
                 <div className="lp-header">
-                    <h3>Cash Out</h3>
+                    <h3>Redeem Points</h3>
                     <span className="lp-badge" style={{ background: 'rgba(255,0,122,0.1)', color: 'var(--pink)' }}>Off-Ramp</span>
                 </div>
 
@@ -93,15 +81,15 @@ export default function Offramp({ onSuccess }) {
                     <div className="onramp-step">
                         <div className="onramp-step-number" style={{ background: step >= 1 ? 'var(--pink)' : 'var(--dark-border)', opacity: step >= 1 ? 1 : 0.5 }}>2</div>
                         <div className="onramp-step-content">
-                            <div className="onramp-step-title" style={{ opacity: step >= 1 ? 1 : 0.5 }}>Burn tokens on-ledger</div>
-                            <div className="onramp-step-desc" style={{ opacity: step >= 1 ? 1 : 0.5 }}>Tokens destroyed on XRPL — verified on-chain</div>
+                            <div className="onramp-step-title" style={{ opacity: step >= 1 ? 1 : 0.5 }}>Burn tokens on XRPL</div>
+                            <div className="onramp-step-desc" style={{ opacity: step >= 1 ? 1 : 0.5 }}>Crypto tokens destroyed on-chain</div>
                         </div>
                     </div>
                     <div className="onramp-step">
                         <div className="onramp-step-number" style={{ background: step >= 2 ? 'var(--pink)' : 'var(--dark-border)', opacity: step >= 2 ? 1 : 0.5 }}>3</div>
                         <div className="onramp-step-content">
-                            <div className="onramp-step-title" style={{ opacity: step >= 2 ? 1 : 0.5 }}>Receive AUD payout</div>
-                            <div className="onramp-step-desc" style={{ opacity: step >= 2 ? 1 : 0.5 }}>Fiat sent via {selectedPayout.label}</div>
+                            <div className="onramp-step-title" style={{ opacity: step >= 2 ? 1 : 0.5 }}>Points credited to {tokenData.fullName}</div>
+                            <div className="onramp-step-desc" style={{ opacity: step >= 2 ? 1 : 0.5 }}>Points arrive in your loyalty account within 5 mins</div>
                         </div>
                     </div>
                 </div>
@@ -143,57 +131,53 @@ export default function Offramp({ onSuccess }) {
                     </div>
                 </div>
 
-                {/* AUD output */}
+                {/* Points output */}
                 <div className="lp-input-card" style={{ marginBottom: 16 }}>
                     <div className="lp-input-row">
                         <div className="lp-input" style={{ color: numAmount > 0 ? 'var(--green)' : 'var(--text-tertiary)', fontSize: 28, fontWeight: 600 }}>
-                            ${audValue > 0 ? audValue.toLocaleString() : '0.00'}
+                            {netPoints > 0 ? netPoints.toLocaleString() : '0'}
                         </div>
                         <div style={{
                             display: 'flex', alignItems: 'center', gap: 8,
                             padding: '8px 14px', background: 'var(--dark-border)',
                             borderRadius: 'var(--radius-sm)', fontSize: 14, fontWeight: 500,
                         }}>
-                            🇦🇺 AUD
+                            <TokenLogo token={tokenData} size={18} />
+                            {tokenData.name}
                         </div>
                     </div>
                     <div className="swap-panel-footer" style={{ marginTop: 8 }}>
-                        <span>Rate: 1 {tokenData.symbol} = ${tokenData.price.toFixed(2)} AUD</span>
-                        <span>0.3% exit fee</span>
+                        <span>Credited to your {tokenData.fullName} account</span>
+                        <span>0.3% fee</span>
                     </div>
                 </div>
 
-                {/* Payout method selector */}
-                <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>Payout Method</div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                        {PAYOUT_METHODS.map(method => (
-                            <button
-                                key={method.id}
-                                onClick={() => !redeeming && setPayoutMethod(method.id)}
-                                style={{
-                                    flex: 1,
-                                    padding: '10px 8px',
-                                    borderRadius: 'var(--radius-sm)',
-                                    border: `1.5px solid ${payoutMethod === method.id ? 'var(--pink)' : 'var(--dark-border)'}`,
-                                    background: payoutMethod === method.id ? 'rgba(255,0,122,0.08)' : 'var(--dark-card)',
-                                    color: 'var(--text-primary)',
-                                    cursor: redeeming ? 'not-allowed' : 'pointer',
-                                    transition: 'all 0.2s',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    alignItems: 'center',
-                                    gap: 4,
-                                    fontSize: 12,
-                                }}
-                            >
-                                <span style={{ fontSize: 18 }}>{method.icon}</span>
-                                <span style={{ fontWeight: 500 }}>{method.label}</span>
-                                <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{method.eta}</span>
-                            </button>
-                        ))}
+                {/* Delivery info */}
+                {numAmount > 0 && (
+                    <div style={{
+                        padding: '14px 16px', marginBottom: 16,
+                        background: 'linear-gradient(135deg, rgba(255,0,122,0.06), rgba(139,92,246,0.06))',
+                        border: '1px solid rgba(255,0,122,0.15)',
+                        borderRadius: 'var(--radius-sm)',
+                        display: 'flex', alignItems: 'center', gap: 12,
+                    }}>
+                        <div style={{
+                            width: 40, height: 40, borderRadius: '50%',
+                            background: 'rgba(255,0,122,0.12)', display: 'flex',
+                            alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                        }}>
+                            <Clock size={20} color="var(--pink)" />
+                        </div>
+                        <div>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>
+                                {netPoints.toLocaleString()} points → {tokenData.fullName}
+                            </div>
+                            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                                Your points will arrive in your loyalty account within <strong style={{ color: 'var(--pink)' }}>5 minutes</strong>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* Fee breakdown */}
                 {numAmount > 0 && (
@@ -208,16 +192,12 @@ export default function Offramp({ onSuccess }) {
                             <span style={{ color: 'var(--text-primary)' }}>{numAmount.toLocaleString()} {tokenData.symbol}</span>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span>Exit fee (0.3%)</span>
+                            <span>Protocol fee (0.3%)</span>
                             <span>−{exitFee} {tokenData.symbol}</span>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span>Net burned</span>
-                            <span>{netAmount} {tokenData.symbol}</span>
-                        </div>
                         <div style={{ borderTop: '1px solid var(--dark-border)', paddingTop: 6, display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
-                            <span style={{ color: 'var(--text-primary)' }}>You receive</span>
-                            <span style={{ color: 'var(--green)' }}>${audValue.toLocaleString()} AUD</span>
+                            <span style={{ color: 'var(--text-primary)' }}>Points credited</span>
+                            <span style={{ color: 'var(--green)' }}>{netPoints.toLocaleString()} {tokenData.name}</span>
                         </div>
                     </div>
                 )}
@@ -232,16 +212,16 @@ export default function Offramp({ onSuccess }) {
                     {!connected ? 'Connect Wallet' : redeeming ? (
                         <>
                             <Loader2 size={16} style={{ animation: 'spin 1s linear infinite', display: 'inline', verticalAlign: 'middle', marginRight: 8 }} />
-                            {step === 1 && 'Burning tokens…'}
-                            {step === 2 && 'Processing payout…'}
-                            {step === 3 && <><CheckCircle size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 8 }} /> Done!</>}
+                            {step === 1 && 'Burning on XRPL…'}
+                            {step === 2 && 'Crediting points…'}
+                            {step === 3 && <><CheckCircle size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 8 }} /> Order placed!</>}
                         </>
                     ) : numAmount > userBalance ? (
                         'Insufficient balance'
                     ) : (
                         <>
-                            <Banknote size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 8 }} />
-                            Redeem for ${audValue > 0 ? audValue.toLocaleString() : '0.00'} AUD
+                            <Ticket size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 8 }} />
+                            Redeem {netPoints > 0 ? netPoints.toLocaleString() : '0'} {tokenData.name}
                         </>
                     )}
                 </button>

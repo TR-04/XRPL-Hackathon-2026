@@ -927,18 +927,21 @@ class XRPLManager:
         }
 
     # ─── Offramp (Redeem tokens for fiat value) ─────────────────────
-    async def offramp(self, currency: str, amount: float, user_seed: str, payout_method: str = "bank_transfer") -> dict:
-        """Offramp: redeem loyalty tokens for fiat-equivalent value.
+    async def offramp(self, currency: str, amount: float, user_seed: str, payout_method: str = "points_credit") -> dict:
+        """Offramp: burn crypto loyalty tokens and credit points back to the brand.
 
         Flow:
-          1. 0.3% exit fee deducted
-          2. Net tokens are burned (sent back to issuer)
-          3. AUD-equivalent value is calculated from token price
-          4. A redemption receipt is recorded
+          1. 0.3% protocol fee deducted
+          2. Net tokens are burned on XRPL (sent back to issuer)
+          3. A points-credit order is created
+          4. Points arrive in the user's brand loyalty account within 5 minutes
 
-        In production this would trigger an actual fiat payout; for the
-        hackathon demo it records the receipt and burns the tokens on-ledger.
+        In production this would call the brand's loyalty API to credit points;
+        for the hackathon demo we record the order and burn the tokens on-ledger.
         """
+        import secrets
+        import time
+
         issuer = self.issuer_wallets.get(currency)
         if not issuer:
             return {"error": f"Unknown token: {currency}"}
@@ -947,12 +950,12 @@ class XRPLManager:
         if not user_seed:
             return {"error": "No wallet seed provided — cannot sign transaction"}
 
-        # Look up the token price for AUD conversion
+        # Look up brand info
         token_info = next((t for t in BRAND_TOKENS if t["currency"] == currency), None)
         if not token_info:
             return {"error": f"Token metadata not found: {currency}"}
 
-        # Deduct 0.3% exit fee
+        # Deduct 0.3% protocol fee
         fee_amount = round(amount * self.PROTOCOL_FEE, 2)
         net_amount = round(amount - fee_amount, 2)
 
@@ -974,9 +977,9 @@ class XRPLManager:
             )
             result = await submit_and_wait(pay_burn, self.client, user_wallet)
             tx_hash = result.result.get("hash", "")
-            logger.info(f"💸 Offramp burn: {net_amount} {currency} from {user_wallet.address}: {tx_hash}")
+            logger.info(f"🔥 Offramp burn: {net_amount} {currency} from {user_wallet.address}: {tx_hash}")
 
-            # Collect exit fee to master wallet
+            # Collect protocol fee to master wallet
             if fee_amount > 0:
                 await self._collect_fee(currency, fee_amount)
 
@@ -992,23 +995,24 @@ class XRPLManager:
             logger.warning(f"Offramp failed for {currency}: {e}")
             return {"error": f"Offramp failed: {str(e)}"}
 
-        # Calculate AUD payout
-        aud_value = round(net_amount * token_info["price"], 2)
+        # Generate a human-readable order ID
+        order_id = f"LS-{int(time.time())}-{secrets.token_hex(3).upper()}"
 
         receipt = {
             "tx_hash": tx_hash,
+            "order_id": order_id,
             "token": currency,
+            "brand": token_info.get("name", currency),
             "amount_redeemed": amount,
             "exit_fee": fee_amount,
-            "net_burned": net_amount,
-            "aud_value": aud_value,
-            "payout_method": payout_method,
-            "status": "completed",
+            "net_points": net_amount,
+            "delivery_eta": "5 minutes",
+            "status": "processing",
             "user": user_wallet.address,
             "explorer": f"https://testnet.xrpl.org/transactions/{tx_hash}",
         }
         self._offramps.append(receipt)
-        logger.info(f"  📝 Offramp receipt: {net_amount} {currency} → ${aud_value} AUD ({payout_method})")
+        logger.info(f"  🎫 Points order {order_id}: {net_amount} {currency} → {token_info.get('name', currency)} loyalty account")
 
         return receipt
 

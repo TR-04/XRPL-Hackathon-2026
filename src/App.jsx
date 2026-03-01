@@ -34,7 +34,7 @@ export default function App() {
                         {activeTab === 'Swap' && 'Swap loyalty points instantly'}
                         {activeTab === 'Transfer' && 'Send points to anyone'}
                         {activeTab === 'Deposit' && 'Deposit your loyalty points'}
-                        {activeTab === 'Cash Out' && 'Redeem points for AUD'}
+                        {activeTab === 'Redeem' && 'Redeem points back to your loyalty account'}
                         {activeTab === 'Master' && 'Protocol revenue dashboard'}
                     </h1>
                 </div>
@@ -55,7 +55,7 @@ export default function App() {
                     <OnRamp onSuccess={handleSuccess} />
                 )}
 
-                {activeTab === 'Cash Out' && (
+                {activeTab === 'Redeem' && (
                     <Offramp onSuccess={handleSuccess} />
                 )}
 
@@ -71,7 +71,7 @@ export default function App() {
                         { tab: 'Swap', icon: <ArrowLeftRight size={18} />, label: 'Swap' },
                         { tab: 'Transfer', icon: <Send size={18} />, label: 'Send' },
                         { tab: 'Deposit', icon: <QrCode size={18} />, label: 'Deposit' },
-                        { tab: 'Cash Out', icon: <Banknote size={18} />, label: 'Cash Out' },
+                        { tab: 'Redeem', icon: <Banknote size={18} />, label: 'Redeem' },
                         { tab: 'Master', icon: <Shield size={18} />, label: 'Master' },
                     ].map(({ tab, icon, label }) => (
                         <button

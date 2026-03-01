@@ -17,6 +17,7 @@ export default function SuccessOverlay({ data, onClose }) {
         if (data.type === 'transfer') return 'Transfer Sent!';
         if (data.type === 'mint') return 'Tokens Minted!';
         if (data.type === 'liquidity') return 'Liquidity Added!';
+        if (data.type === 'offramp') return 'Points Redeemed!';
         return 'Swap Successful!';
     };
 
@@ -29,6 +30,9 @@ export default function SuccessOverlay({ data, onClose }) {
         }
         if (data.type === 'liquidity') {
             return `Added ${data.amountA.toLocaleString()} ${data.tokenA.symbol} + ${data.amountB.toLocaleString()} ${data.tokenB.symbol}`;
+        }
+        if (data.type === 'offramp') {
+            return `${data.netPoints?.toLocaleString() || data.amount.toLocaleString()} ${data.token.name} points arriving within 5 minutes`;
         }
         return `Swapped ${data.amountIn.toLocaleString()} ${data.fromToken.symbol} for ${data.amountOut.toLocaleString()} ${data.toToken.symbol}`;
     };
