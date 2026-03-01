@@ -73,15 +73,15 @@ Uniswap-style two-panel swap interface. Select any loyalty token pair, see live 
 
 ### 💰 7 Tokenised Australian Brands
 
-| Token | Brand | Price (AUD) | Description |
+| Token | Brand | Description |
 |-------|-------|-------------|-------------|
-| 🍔 `mMacca` | McDonald's AU | $0.80 | MyMacca's Rewards |
-| ✈️ `mQantas` | Qantas Airways | $1.00 | Frequent Flyer Points |
-| 🛩️ `mJetstar` | Jetstar Airways | $0.95 | Jetstar Rewards |
-| 🌮 `mGYG` | Guzman y Gomez | $0.45 | GYG Loyalty |
-| 🍎 `mApple` | Apple | $2.50 | Apple Rewards |
-| 💻 `mKmart` | Kmart | $0.10 | Kmart Rewards |
-| 🛒 `mWoolies` | Woolworths | $0.02 | Everyday Rewards |
+| 🍔 `mMacca` | McDonald's AU | MyMacca's Rewards |
+| ✈️ `mQantas` | Qantas Airways | Frequent Flyer Points |
+| 🛩️ `mJetstar` | Jetstar Airways | Jetstar Rewards |
+| 🌮 `mGYG` | Guzman y Gomez | GYG Loyalty |
+| 🍎 `mApple` | Apple | Apple Rewards |
+| 💻 `mKmart` | Kmart | Kmart Rewards |
+| 🛒 `mWoolies` | Woolworths | Everyday Rewards |
 
 ### 💧 Liquidity Pools
 Provide liquidity to earn **0.3% AMM fees**. View TVL, APY, and pool share in real-time.
