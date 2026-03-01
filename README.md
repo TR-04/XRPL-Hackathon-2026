@@ -92,12 +92,6 @@ Send tokenised points to any XRPL address with **real on-ledger Payment transact
 ### 🏧 On-Ramp (Deposit)
 Custodial ramp with 3-step flow: select brand → scan QR → mint tokens 1:1. Auto-creates trustlines for new tokens.
 
-### 📊 Platform Stats
-Live dashboard showing volume ($127k+), platform fees ($382), total swaps (1,247), and XRPL execution speed (<3s).
-
-### 🎉 Success Animations
-Confetti celebration on every successful transaction with clickable explorer links.
-
 ---
 
 ## 🎮 Demo Flow
@@ -114,12 +108,11 @@ Follow this exact flow to see the full LoyaltySwap experience:
 2. Note the live quote: **~79 mQantas** from 100 mMacca
 3. See the routing: **mMacca → XRP → mQantas**
 4. Click **"Swap"** — real XRPL transactions are submitted (~5s)
-5. 🎉 **Confetti!** Click the **explorer link** to see your transaction on https://testnet.xrpl.org
+5. Click the **explorer link** to see your transaction on https://testnet.xrpl.org
 6. Click **"Done"** — balances update from the ledger
 
 ### Step 3: Browse Token Grid
-1. Scroll down to see all **7 brand cards** with live prices and 24h% changes
-2. Click any brand card to go to the swap widget
+1. Click any brand card to go to the swap widget
 
 ### Step 4: Add Liquidity
 1. Click the **"Liquidity"** tab
