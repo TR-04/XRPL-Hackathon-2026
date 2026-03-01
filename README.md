@@ -1,4 +1,5 @@
 # 🔄 LoyaltySwap
+[Slides Link](https://www.canva.com/design/DAHCp0Np8FE/wAS8tkO9Z9rY2rtKT0ONbw/edit?utm_content=DAHCp0Np8FE&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton)
 
 **Swap loyalty points anywhere on XRPL**
 
