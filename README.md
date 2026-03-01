@@ -100,7 +100,7 @@ Confetti celebration on every successful transaction with clickable explorer lin
 
 ---
 
-## 🎮 Demo Flow (For Hackathon Judges)
+## 🎮 Demo Flow
 
 Follow this exact flow to see the full LoyaltySwap experience:
 
