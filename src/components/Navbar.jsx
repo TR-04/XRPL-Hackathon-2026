@@ -13,7 +13,7 @@ export default function Navbar({ activeTab, onTabChange }) {
     return (
         <nav className="navbar">
             <a href="/" className="navbar-logo">
-                <div className="logo-icon">🔄</div>
+                <img src="/logos/swap.png" alt="LoyaltySwap" className="logo-icon" />
                 Loyalty<span className="logo-accent">Swap</span>
             </a>
 
