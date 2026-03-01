@@ -80,7 +80,7 @@ Uniswap-style two-panel swap interface. Select any loyalty token pair, see live 
 | 🛩️ `mJetstar` | Jetstar Airways | $0.95 | Jetstar Rewards |
 | 🌮 `mGYG` | Guzman y Gomez | $0.45 | GYG Loyalty |
 | 🍎 `mApple` | Apple | $2.50 | Apple Rewards |
-| 💻 `mMS` | M&S | $0.10 | M&S Rewards |
+| 💻 `mKmart` | Kmart | $0.10 | Kmart Rewards |
 | 🛒 `mWoolies` | Woolworths | $0.02 | Everyday Rewards |
 
 ### 💧 Liquidity Pools
