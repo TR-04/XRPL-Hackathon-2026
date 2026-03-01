@@ -21,6 +21,8 @@ struct MainTabView: View {
                         P2PTransferView(appState: appState, onSuccess: { successData = $0 })
                     case "Deposit":
                         DepositView(appState: appState, onSuccess: { successData = $0 })
+                    case "Withdraw":
+                        WithdrawView(appState: appState, onSuccess: { successData = $0 })
                     default:
                         SwapView(appState: appState, onSuccess: { successData = $0 })
                     }
@@ -30,7 +32,7 @@ struct MainTabView: View {
                 .animation(.easeOut(duration: 0.12), value: selectedTab)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 
-                // Bottom nav - 3 tabs
+                // Bottom nav - 4 tabs
                 HStack(spacing: 0) {
                     NavItem(icon: "arrow.left.arrow.right", customImageName: nil, label: "Swap", isSelected: selectedTab == "Swap") {
                         selectedTab = "Swap"
@@ -40,6 +42,9 @@ struct MainTabView: View {
                     }
                     NavItem(icon: "qrcode", customImageName: "DepositIcon", customImageSize: 26, label: "Deposit", isSelected: selectedTab == "Deposit") {
                         selectedTab = "Deposit"
+                    }
+                    NavItem(icon: "arrow.down.to.line", customImageName: "WithdrawIcon", customImageSize: 26, label: "Withdraw", isSelected: selectedTab == "Withdraw") {
+                        selectedTab = "Withdraw"
                     }
                 }
                 .padding(.vertical, 12)

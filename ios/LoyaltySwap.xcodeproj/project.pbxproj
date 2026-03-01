@@ -25,6 +25,7 @@
 		A1000020 /* SlideToConnectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000020 /* SlideToConnectView.swift */; };
 		A1000021 /* QRCodeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000021 /* QRCodeView.swift */; };
 		A1000022 /* PoweredByXRPLView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000022 /* PoweredByXRPLView.swift */; };
+		A1000023 /* WithdrawView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000023 /* WithdrawView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -48,6 +49,7 @@
 		A2000020 /* SlideToConnectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlideToConnectView.swift; sourceTree = "<group>"; };
 		A2000021 /* QRCodeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRCodeView.swift; sourceTree = "<group>"; };
 		A2000022 /* PoweredByXRPLView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoweredByXRPLView.swift; sourceTree = "<group>"; };
+		A2000023 /* WithdrawView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WithdrawView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -60,7 +62,7 @@
 		A5000002 /* LoyaltySwap */ = {isa = PBXGroup; children = (A2000001, A5000003, A5000004, A5000005, A5000006, A2000010); path = LoyaltySwap; sourceTree = "<group>"; };
 		A5000003 /* Models */ = {isa = PBXGroup; children = (A2000002); path = Models; sourceTree = "<group>"; };
 		A5000004 /* Design */ = {isa = PBXGroup; children = (A2000003); path = Design; sourceTree = "<group>"; };
-		A5000005 /* Views */ = {isa = PBXGroup; children = (A2000013, A2000014, A2000015, A2000016, A2000017, A2000007, A2000008, A2000018, A2000019, A2000020, A2000021, A2000022, A2000009); path = Views; sourceTree = "<group>"; };
+		A5000005 /* Views */ = {isa = PBXGroup; children = (A2000013, A2000014, A2000015, A2000016, A2000017, A2000023, A2000007, A2000008, A2000018, A2000019, A2000020, A2000021, A2000022, A2000009); path = Views; sourceTree = "<group>"; };
 		A5000006 /* Services */ = {isa = PBXGroup; children = (A2000011, A2000012); path = Services; sourceTree = "<group>"; };
 /* End PBXGroup section */
 
@@ -77,7 +79,7 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		A6000002 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A1000001, A1000002, A1000003, A1000007, A1000008, A1000009, A1000011, A1000012, A1000013, A1000014, A1000015, A1000016, A1000017, A1000018, A1000019, A1000020, A1000021, A1000022); runOnlyForDeploymentPostprocessing = 0; };
+		A6000002 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A1000001, A1000002, A1000003, A1000007, A1000008, A1000009, A1000011, A1000012, A1000013, A1000014, A1000015, A1000016, A1000017, A1000018, A1000019, A1000020, A1000021, A1000022, A1000023); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */

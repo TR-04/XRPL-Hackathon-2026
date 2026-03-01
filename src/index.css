@@ -1221,6 +1221,54 @@ body {
   animation: pulse 1.5s infinite;
 }
 
+/* ===== Withdraw ===== */
+.withdraw-section {
+  max-width: 620px;
+  margin: 0 auto 48px;
+  animation: slideUp 0.6s ease;
+  overflow: visible;
+}
+
+.withdraw-card {
+  background: var(--dark-card);
+  border: 1px solid var(--dark-border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  overflow: hidden;
+}
+
+.withdraw-desc {
+  font-size: 14px;
+  color: var(--text-tertiary);
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.withdraw-btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: linear-gradient(135deg, #F59E0B, #D97706);
+  color: white;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.withdraw-btn:hover:not(:disabled) {
+  opacity: 0.9;
+  box-shadow: 0 4px 20px rgba(245, 158, 11, 0.35);
+  transform: translateY(-1px);
+}
+
+.withdraw-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* ===== Revenue Widget ===== */
 .revenue-section {
   margin-bottom: 48px;
@@ -1550,6 +1598,51 @@ body {
   font-weight: 600;
 }
 
+.success-balances {
+  background: rgba(39, 174, 96, 0.08);
+  border: 1px solid rgba(39, 174, 96, 0.25);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.success-balances-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--green);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+
+.success-balances-grid {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.success-balance-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 16px;
+  background: var(--dark-surface);
+  border-radius: 10px;
+}
+
+.success-balance-token {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.success-balance-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
 .success-hash {
   font-family: monospace;
   font-size: 12px;
@@ -1726,6 +1819,16 @@ body {
 
 .mobile-nav-item:hover {
   color: var(--text-secondary);
+}
+
+.mobile-nav-item .nav-icon-img {
+  filter: invert(1);
+  opacity: 0.8;
+}
+
+.mobile-nav-item.active .nav-icon-img {
+  opacity: 1;
+  filter: invert(1) sepia(1) saturate(10000%) hue-rotate(300deg);
 }
 
 @media (max-width: 768px) {

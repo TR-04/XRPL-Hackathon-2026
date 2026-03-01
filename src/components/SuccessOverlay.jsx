@@ -15,6 +15,7 @@ export default function SuccessOverlay({ data, onClose }) {
 
     const getTitle = () => {
         if (data.type === 'transfer') return 'Transfer Sent!';
+        if (data.type === 'withdraw') return 'Withdrawal Complete!';
         if (data.type === 'mint') return 'Tokens Minted!';
         if (data.type === 'liquidity') return 'Liquidity Added!';
         return 'Swap Successful!';
@@ -23,6 +24,11 @@ export default function SuccessOverlay({ data, onClose }) {
     const getSubtitle = () => {
         if (data.type === 'transfer') {
             return `${data.amount.toLocaleString()} ${data.token.symbol} sent`;
+        }
+        if (data.type === 'withdraw') {
+            const dest = data.destination || '';
+            const destShort = dest.length > 18 ? `${dest.slice(0, 8)}...${dest.slice(-6)}` : dest;
+            return `${data.amount.toLocaleString()} ${data.token.symbol} withdrawn to ${destShort || 'external wallet'}`;
         }
         if (data.type === 'mint') {
             return `${data.amount.toLocaleString()} ${data.token.symbol} minted to your wallet`;
@@ -51,12 +57,20 @@ export default function SuccessOverlay({ data, onClose }) {
                 <h2 className="success-title">{getTitle()}</h2>
                 <p className="success-subtitle">{getSubtitle()}</p>
 
-                {data.path && (
+                {(data.path || data.type === 'withdraw') && (
                     <div className="success-details">
-                        <div className="success-detail-row">
-                            <span className="success-detail-label">Route</span>
-                            <span className="success-detail-value">{data.path.join(' → ')}</span>
-                        </div>
+                        {data.path && (
+                            <div className="success-detail-row">
+                                <span className="success-detail-label">Route</span>
+                                <span className="success-detail-value">{data.path.join(' → ')}</span>
+                            </div>
+                        )}
+                        {data.type === 'withdraw' && data.destination && (
+                            <div className="success-detail-row">
+                                <span className="success-detail-label">To</span>
+                                <span className="success-detail-value" style={{ fontFamily: 'monospace', fontSize: 12 }}>{data.destination}</span>
+                            </div>
+                        )}
                         <div className="success-detail-row">
                             <span className="success-detail-label">Network</span>
                             <span className="success-detail-value">XRPL Testnet</span>
@@ -64,6 +78,30 @@ export default function SuccessOverlay({ data, onClose }) {
                         <div className="success-detail-row">
                             <span className="success-detail-label">Time</span>
                             <span className="success-detail-value" style={{ color: 'var(--green)' }}>~1.8s</span>
+                        </div>
+                    </div>
+                )}
+
+                {data.type === 'swap' && data.balances && (
+                    <div className="success-balances">
+                        <div className="success-balances-title">Updated balances</div>
+                        <div className="success-balances-grid">
+                            {data.fromToken && (
+                                <div className="success-balance-item">
+                                    <span className="success-balance-token">{data.fromToken.symbol}</span>
+                                    <span className="success-balance-value">
+                                        {parseFloat(data.balances[data.fromToken.id] || 0).toLocaleString()} pts
+                                    </span>
+                                </div>
+                            )}
+                            {data.toToken && (
+                                <div className="success-balance-item">
+                                    <span className="success-balance-token">{data.toToken.symbol}</span>
+                                    <span className="success-balance-value">
+                                        {parseFloat(data.balances[data.toToken.id] || 0).toLocaleString()} pts
+                                    </span>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}

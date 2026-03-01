@@ -234,19 +234,24 @@ struct SwapView: View {
     
     private func performSwap() {
         guard let q = quote, numAmount > 0, numAmount <= appState.getBalance(fromToken.id) else { return }
+        let amountIn = numAmount
+        let amountOut = q.amountOut
+        let from = fromToken
+        let to = toToken
+        let path = q.path
         loading = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
-            appState.updateBalance(fromToken.id, -numAmount)
-            appState.updateBalance(toToken.id, q.amountOut)
+            appState.updateBalance(from.id, -amountIn)
+            appState.updateBalance(to.id, amountOut)
             loading = false
             amount = ""
             onSuccess(.swap(
-                fromToken: fromToken,
-                toToken: toToken,
-                amountIn: numAmount,
-                amountOut: q.amountOut,
+                fromToken: from,
+                toToken: to,
+                amountIn: amountIn,
+                amountOut: amountOut,
                 txHash: Pools.generateTxHash(),
-                path: q.path
+                path: path
             ))
         }
     }
@@ -255,5 +260,6 @@ struct SwapView: View {
 enum SuccessData {
     case swap(fromToken: Token, toToken: Token, amountIn: Double, amountOut: Double, txHash: String, path: [String])
     case transfer(token: Token, amount: Double, recipient: String, txHash: String)
+    case withdraw(token: Token, amount: Double, destination: String, txHash: String)
     case mint(token: Token, amount: Double, txHash: String)
 }

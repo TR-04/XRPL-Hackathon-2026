@@ -8,7 +8,7 @@ import TokenSelector from './TokenSelector';
 import { TokenLogo } from './BrandGrid';
 
 export default function SwapWidget({ onSuccess }) {
-    const { connected, connectWallet, getBalance, updateBalance, refreshBalances, backendOnline, walletSeed } = useWallet();
+    const { connected, connectWallet, getBalance, updateBalance, applyBalances, refreshBalances, backendOnline, walletSeed } = useWallet();
     const [fromToken, setFromToken] = useState('mMacca');
     const [toToken, setToToken] = useState('mQantas');
     const [amount, setAmount] = useState('');
@@ -80,10 +80,11 @@ export default function SwapWidget({ onSuccess }) {
 
         let txHash = null;
         let outputAmount = quote.amountOut;
+        let result = null;
 
         try {
             // Try real API swap
-            const result = await api.executeSwap(fromToken, toToken, numAmount, walletSeed);
+            result = await api.executeSwap(fromToken, toToken, numAmount, walletSeed);
             if (result && result.tx_hash) {
                 txHash = result.tx_hash;
                 outputAmount = result.output_amount || quote.amountOut;
@@ -98,24 +99,29 @@ export default function SwapWidget({ onSuccess }) {
             txHash = generateTxHash();
         }
 
-        updateBalance(fromToken, -numAmount);
-        updateBalance(toToken, outputAmount);
+        if (result?.balances) {
+            applyBalances(result.balances);
+        } else {
+            updateBalance(fromToken, -numAmount);
+            updateBalance(toToken, outputAmount);
+            refreshBalances();
+        }
+
         setLoading(false);
         setAmount('');
         setApiQuote(null);
 
-        // Refresh balances from backend
-        refreshBalances();
-
         onSuccess({
+            type: 'swap',
             fromToken: fromData,
             toToken: toData,
             amountIn: numAmount,
             amountOut: outputAmount,
             txHash,
             path: quote.path,
+            balances: result?.balances,
         });
-    }, [quote, numAmount, fromToken, toToken, fromData, toData, getBalance, updateBalance, refreshBalances, onSuccess]);
+    }, [quote, numAmount, fromToken, toToken, fromData, toData, getBalance, updateBalance, applyBalances, refreshBalances, onSuccess]);
 
     const insufficientBalance = numAmount > getBalance(fromToken);
 

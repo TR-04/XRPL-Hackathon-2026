@@ -70,6 +70,7 @@ struct SuccessOverlayView: View {
         guard let d = data else { return "" }
         switch d {
         case .transfer: return "Transfer Sent!"
+        case .withdraw: return "Withdrawal Complete!"
         case .mint: return "Tokens Minted!"
         case .swap: return "Swap Successful!"
         }
@@ -80,6 +81,9 @@ struct SuccessOverlayView: View {
         switch d {
         case .transfer(let token, let amount, _, _):
             return "\(Int(amount)) \(token.symbol) sent"
+        case .withdraw(let token, let amount, let dest, _):
+            let destShort = dest.count > 18 ? "\(dest.prefix(8))...\(dest.suffix(6))" : dest
+            return "\(Int(amount)) \(token.symbol) withdrawn to \(destShort)"
         case .mint(let token, let amount, _):
             return "\(Int(amount)) \(token.symbol) minted to your wallet"
         case .swap(let from, let to, let amountIn, let amountOut, _, _):
@@ -91,6 +95,7 @@ struct SuccessOverlayView: View {
         guard let d = data else { return "" }
         switch d {
         case .transfer(_, _, _, let h): return h
+        case .withdraw(_, _, _, let h): return h
         case .mint(_, _, let h): return h
         case .swap(_, _, _, _, let h, _): return h
         }

@@ -5,6 +5,7 @@ import SwapWidget from './components/SwapWidget';
 import BrandGrid from './components/BrandGrid';
 import P2PTransfer from './components/P2PTransfer';
 import OnRamp from './components/OnRamp';
+import Withdraw from './components/Withdraw';
 import MasterWallet from './components/MasterWallet';
 import SuccessOverlay from './components/SuccessOverlay';
 
@@ -33,6 +34,7 @@ export default function App() {
                         {activeTab === 'Swap' && 'Swap loyalty points instantly'}
                         {activeTab === 'Transfer' && 'Send points to anyone'}
                         {activeTab === 'Deposit' && 'Deposit your loyalty points'}
+                        {activeTab === 'Withdraw' && 'Withdraw tokens to external wallet'}
                         {activeTab === 'Master' && 'Protocol revenue dashboard'}
                     </h1>
                 </div>
@@ -53,6 +55,10 @@ export default function App() {
                     <OnRamp onSuccess={handleSuccess} />
                 )}
 
+                {activeTab === 'Withdraw' && (
+                    <Withdraw onSuccess={handleSuccess} />
+                )}
+
                 {activeTab === 'Master' && (
                     <MasterWallet />
                 )}
@@ -65,6 +71,7 @@ export default function App() {
                         { tab: 'Swap', icon: <ArrowLeftRight size={18} />, label: 'Swap' },
                         { tab: 'Transfer', icon: <Send size={18} />, label: 'Send' },
                         { tab: 'Deposit', icon: <QrCode size={18} />, label: 'Deposit' },
+                        { tab: 'Withdraw', icon: <img src="/logos/withdraw.png" alt="" className="nav-icon-img" width={18} height={18} />, label: 'Withdraw' },
                         { tab: 'Master', icon: <Shield size={18} />, label: 'Master' },
                     ].map(({ tab, icon, label }) => (
                         <button

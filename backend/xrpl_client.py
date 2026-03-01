@@ -459,6 +459,7 @@ class XRPLManager:
         )
 
         tx_hash = None
+        balances_after = None
         try:
             if not user_seed:
                 raise ValueError("No wallet seed provided — cannot sign transaction")
@@ -520,6 +521,9 @@ class XRPLManager:
             if fee_amount > 0:
                 await self._collect_fee(from_token, fee_amount)
 
+            # Fetch updated balances from chain for frontend display
+            balances_after = await self.get_balances(user_wallet.address)
+
         except Exception as e:
             # Rollback pool reserves on failure
             pool_from["token_reserve"] -= amount
@@ -531,7 +535,7 @@ class XRPLManager:
         if not tx_hash:
             tx_hash = self._generate_tx_hash()
 
-        return {
+        result = {
             "tx_hash": tx_hash,
             "output_amount": output_amount,
             "price_impact": quote["price_impact"],
@@ -540,6 +544,9 @@ class XRPLManager:
             "protocol_fee": fee_amount,
             "fee_token": from_token,
         }
+        if balances_after is not None:
+            result["balances"] = balances_after
+        return result
 
     async def mint_tokens(self, currency: str, user_address: str, amount: float, qr_data: str = "", user_seed: str = "") -> dict:
         """Mint (transfer) tokens from issuer wallet to user.

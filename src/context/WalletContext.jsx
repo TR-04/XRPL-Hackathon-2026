@@ -102,6 +102,16 @@ export function WalletProvider({ children }) {
         }));
     }, []);
 
+    const applyBalances = useCallback((rawBalances) => {
+        if (!rawBalances || typeof rawBalances !== 'object') return;
+        const newBalances = {};
+        TOKENS.forEach(t => {
+            newBalances[t.id] = parseFloat(rawBalances[t.id] || 0);
+        });
+        if (rawBalances.xrp) setXrpBalance(String(rawBalances.xrp));
+        setBalances(newBalances);
+    }, []);
+
     const getBalance = useCallback((tokenId) => {
         return balances[tokenId] || 0;
     }, [balances]);
@@ -119,6 +129,7 @@ export function WalletProvider({ children }) {
             connectWallet,
             disconnectWallet,
             updateBalance,
+            applyBalances,
             getBalance,
             refreshBalances,
         }}>

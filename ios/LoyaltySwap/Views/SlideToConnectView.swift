@@ -44,10 +44,28 @@ struct SlideToConfirmView: View {
             
             GeometryReader { geo in
                 let maxSlide = geo.size.width - thumbSize - padding * 4
+                let fillWidth = min(padding + slideOffset + thumbSize, geo.size.width)
                 ZStack(alignment: .leading) {
+                    // Track background
                     RoundedRectangle(cornerRadius: trackHeight / 2)
                         .fill(Color(hex: "E5E5EA"))
                         .frame(height: trackHeight)
+                    
+                    // Progress fill — fills as you drag, with smooth spring for "rev up" feel
+                    RoundedRectangle(cornerRadius: trackHeight / 2)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    DesignTokens.ctaButton.opacity(0.35),
+                                    DesignTokens.ctaButton.opacity(0.5)
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(width: max(0, fillWidth), height: trackHeight)
+                        .animation(.spring(response: 0.45, dampingFraction: 0.72), value: slideOffset)
+                        .clipped()
                     
                     Text("Slide to confirm")
                         .font(.system(size: 15, weight: .medium))
