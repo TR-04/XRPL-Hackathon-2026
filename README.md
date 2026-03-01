@@ -240,26 +240,3 @@ User: Swap 100 mMacca → mQantas
 | GET | `/api/v1/tokens` | Token metadata + hex codes + issuers |
 
 ---
-
-## 📈 Business Model
-
-| Revenue Stream | Rate | Demo Status |
-|---------------|------|-------------|
-| AMM Swap Fees | 0.3% per hop | ✅ Displayed in Platform Stats |
-| Custodial Ramp | 1% mint/burn | ✅ Real on-ramp mint via issuer |
-| LP Incentives | Variable APY | ✅ Shown in Liquidity panel |
-
----
-
-## 🎯 Hackathon Success Metrics
-
-| Metric | Target | Status |
-|--------|--------|--------|
-| Tokens Live | 7 brands | ✅ |
-| Pools Seeded | 7 AMM pools | ✅ |
-| Swap Flow | End-to-end | ✅ |
-| Mobile Responsive | Yes | ✅ |
-| Confetti on Success | Yes | ✅ |
-| Explorer Links | XRPL Testnet | ✅ |
-
----
