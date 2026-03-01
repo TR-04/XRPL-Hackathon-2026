@@ -1,10 +1,11 @@
 import { useState, useCallback } from 'react';
-import { ArrowLeftRight, Send, QrCode, Shield } from 'lucide-react';
+import { ArrowLeftRight, Send, QrCode, Banknote, Shield } from 'lucide-react';
 import Navbar from './components/Navbar';
 import SwapWidget from './components/SwapWidget';
 import BrandGrid from './components/BrandGrid';
 import P2PTransfer from './components/P2PTransfer';
 import OnRamp from './components/OnRamp';
+import Offramp from './components/Offramp';
 import MasterWallet from './components/MasterWallet';
 import SuccessOverlay from './components/SuccessOverlay';
 
@@ -33,6 +34,7 @@ export default function App() {
                         {activeTab === 'Swap' && 'Swap loyalty points instantly'}
                         {activeTab === 'Transfer' && 'Send points to anyone'}
                         {activeTab === 'Deposit' && 'Deposit your loyalty points'}
+                        {activeTab === 'Cash Out' && 'Redeem points for AUD'}
                         {activeTab === 'Master' && 'Protocol revenue dashboard'}
                     </h1>
                 </div>
@@ -53,6 +55,10 @@ export default function App() {
                     <OnRamp onSuccess={handleSuccess} />
                 )}
 
+                {activeTab === 'Cash Out' && (
+                    <Offramp onSuccess={handleSuccess} />
+                )}
+
                 {activeTab === 'Master' && (
                     <MasterWallet />
                 )}
@@ -65,6 +71,7 @@ export default function App() {
                         { tab: 'Swap', icon: <ArrowLeftRight size={18} />, label: 'Swap' },
                         { tab: 'Transfer', icon: <Send size={18} />, label: 'Send' },
                         { tab: 'Deposit', icon: <QrCode size={18} />, label: 'Deposit' },
+                        { tab: 'Cash Out', icon: <Banknote size={18} />, label: 'Cash Out' },
                         { tab: 'Master', icon: <Shield size={18} />, label: 'Master' },
                     ].map(({ tab, icon, label }) => (
                         <button

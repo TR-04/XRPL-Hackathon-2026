@@ -125,6 +125,32 @@ class ApiService {
         return this._fetch('/api/v1/tokens');
     }
 
+    // ── Offramp (Redeem for fiat) ────────────
+    async offramp(token, amount, walletSeed = '', payoutMethod = 'bank_transfer') {
+        return this._fetch('/api/v1/offramp/redeem', {
+            method: 'POST',
+            body: JSON.stringify({
+                token,
+                amount,
+                wallet_seed: walletSeed,
+                payout_method: payoutMethod,
+            }),
+        });
+    }
+
+    // ── Burn Tokens ─────────────────────────
+    async burnTokens(token, amount, walletSeed = '') {
+        return this._fetch('/api/v1/tokens/burn', {
+            method: 'POST',
+            body: JSON.stringify({ token, amount, wallet_seed: walletSeed }),
+        });
+    }
+
+    // ── Burn Stats ──────────────────────────
+    async getBurnStats() {
+        return this._fetch('/api/v1/tokens/burns');
+    }
+
     // ── Protocol Revenue / Master Wallet ────
     async getProtocolRevenue() {
         return this._fetch('/api/v1/protocol/revenue');
