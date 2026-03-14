@@ -39,7 +39,7 @@ source venv/bin/activate        # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 cd ..
 
-# 4. Start backend (first run creates 7 issuer wallets on XRPL Testnet — ~60s)
+# 4. Start backend (first run creates 7 issuer wallets on XRPL Testnet ~60s)
 cd backend
 source venv/bin/activate
 uvicorn main:app --host 0.0.0.0 --port 8000
